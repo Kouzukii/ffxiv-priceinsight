@@ -1,0 +1,11 @@
+{
+  "Author": "Kouzukii",
+  "Name": "Price Insight",
+  "Description": "See item pricings on hover!",
+  "InternalName": "PriceInsight",
+  "AssemblyVersion": "1.0.0.0",
+  "RepoUrl": "https://github.com/kouzukii/ffxiv-priceinsight",
+  "ApplicableVersion": "any",
+  "Tags": ["marketboard", "items", "price"],
+  "DalamudApiLevel": 3
+}
