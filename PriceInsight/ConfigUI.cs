@@ -48,11 +48,11 @@ namespace PriceInsight {
                     configuration.ShowMostRecentPurchaseWorld = configValue;
                     configuration.Save();
                 }
-                configValue = configuration.ShowAge;
-                if (ImGui.Checkbox("Show price information age", ref configValue)) {
-                    configuration.ShowMostRecentPurchaseWorld = configValue;
-                    configuration.Save();
-                }
+                // configValue = configuration.ShowAge;
+                // if (ImGui.Checkbox("Show price information age", ref configValue)) {
+                //     configuration.ShowMostRecentPurchaseWorld = configValue;
+                //     configuration.Save();
+                // }
                 configValue = configuration.IgnoreOldData;
                 if (ImGui.Checkbox("Ignore data older than 1 month", ref configValue)) {
                     configuration.IgnoreOldData = configValue;
