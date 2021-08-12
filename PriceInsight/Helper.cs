@@ -57,15 +57,12 @@ namespace PriceInsight {
             PrevFinal
         }
 
-        public static async Task SetControlsSectionHeight(DalamudPluginInterface pluginInterface, int height) {
-            await Task.Delay(5);
-            unsafe {
-                var heightShort = (ushort)height;
-                var tooltipUi = (AtkUnitBase*)pluginInterface.Framework.Gui.GetUiObjectByName("ItemDetail", 1);
-                if (tooltipUi == null) return;
-                var bg = GetResNodeByPath(tooltipUi->RootNode, Step.Child, Step.PrevFinal, Step.Child, Step.Child);
-                if (bg != null) bg->Height = heightShort;
-            }
+        public static unsafe void SetControlsSectionHeight(DalamudPluginInterface pluginInterface, int height) {
+            var heightShort = (ushort)height;
+            var tooltipUi = (AtkUnitBase*)pluginInterface.Framework.Gui.GetUiObjectByName("ItemDetail", 1);
+            if (tooltipUi == null) return;
+            var bg = GetResNodeByPath(tooltipUi->RootNode, Step.Child, Step.PrevFinal, Step.Child, Step.Child);
+            if (bg != null) bg->Height = heightShort;
         }
 
         public static unsafe AtkResNode* GetResNodeByPath(AtkResNode* root, params Step[] steps) {

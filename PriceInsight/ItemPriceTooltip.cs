@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 
@@ -95,7 +96,10 @@ namespace PriceInsight {
             if (payloads.Count > 0) {
                 var description = tooltip[ItemTooltip.TooltipField.ControlsDisplay];
                 tooltip[ItemTooltip.TooltipField.ControlsDisplay] = description.Append(payloads);
-                Helper.SetControlsSectionHeight(plugin.PluginInterface, description.TextValue.Count(c => c == '\n') * 18 + 26);
+                Task.Run(async () => {
+                    await Task.Delay(7);
+                    Helper.SetControlsSectionHeight(plugin.PluginInterface, description.TextValue.Count(c => c == '\n') * 18 + 26);
+                });
             }
         }
     }
