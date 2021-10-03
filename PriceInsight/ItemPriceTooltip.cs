@@ -15,7 +15,7 @@ namespace PriceInsight {
         }
 
         public void OnItemTooltip(ItemTooltip tooltip) {
-            var id = plugin.PluginInterface.Framework.Gui.HoveredItem;
+            var id = plugin.GameGui.HoveredItem;
             var hq = id >= 500000;
             id %= 500000;
             var (marketBoardData, isMarketable) = plugin.ItemPriceLookup.Get(id);
@@ -34,28 +34,28 @@ namespace PriceInsight {
                     payloads.Add(new TextPayload("Marketboard Price ("));
                     payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                     payloads.Add(new TextPayload($"{minWorld}): "));
-                    if (!hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 506));
+                    if (!hq) payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{mb.MinimumPriceNQ:N0}"));
-                    if (!hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 0));
+                    if (!hq) payloads.Add(new UIForegroundPayload(0));
                     if (mb.MinimumPriceHQ != 0) {
                         payloads.Add(new TextPayload("/"));
-                        if (hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 506));
+                        if (hq) payloads.Add(new UIForegroundPayload(506));
                         payloads.Add(new TextPayload($"{mb.MinimumPriceHQ:N0}"));
-                        if (hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 0));
+                        if (hq) payloads.Add(new UIForegroundPayload(0));
                     }
                 }
 
                 if (plugin.Configuration.ShowWorld && mb.OwnWorld != null || minWorld == mb.OwnWorld) {
                     payloads.Add(new TextPayload("\n"));
                     payloads.Add(new TextPayload($"Marketboard Price ({mb.OwnWorld}): "));
-                    if (!hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 506));
+                    if (!hq) payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{mb.OwnMinimumPriceNQ:N0}"));
-                    if (!hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 0));
+                    if (!hq) payloads.Add(new UIForegroundPayload(0));
                     if (mb.OwnMinimumPriceHQ != 0) {
                         payloads.Add(new TextPayload("/"));
-                        if (hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 506));
+                        if (hq) payloads.Add(new UIForegroundPayload(506));
                         payloads.Add(new TextPayload($"{mb.OwnMinimumPriceHQ:N0}"));
-                        if (hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 0));
+                        if (hq) payloads.Add(new UIForegroundPayload(0));
                     }
                 }
 
@@ -65,14 +65,14 @@ namespace PriceInsight {
                     payloads.Add(new TextPayload("Recent Purchase ("));
                     payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                     payloads.Add(new TextPayload($"{recentWorld}): "));
-                    if (!hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 506));
+                    if (!hq) payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{mb.MostRecentPurchaseNQ:N0}"));
-                    if (!hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 0));
+                    if (!hq) payloads.Add(new UIForegroundPayload(0));
                     if (mb.MostRecentPurchaseHQ != 0) {
                         payloads.Add(new TextPayload("/"));
-                        if (hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 506));
+                        if (hq) payloads.Add(new UIForegroundPayload(506));
                         payloads.Add(new TextPayload($"{mb.MostRecentPurchaseHQ:N0}"));
-                        if (hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 0));
+                        if (hq) payloads.Add(new UIForegroundPayload(0));
                     }
                 }
 
@@ -80,14 +80,14 @@ namespace PriceInsight {
                     recentWorld == mb.OwnWorld) {
                     payloads.Add(new TextPayload("\n"));
                     payloads.Add(new TextPayload($"Recent Purchase ({mb.OwnWorld}): "));
-                    if (!hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 506));
+                    if (!hq) payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{mb.OwnMostRecentPurchaseNQ:N0}"));
-                    if (!hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 0));
+                    if (!hq) payloads.Add(new UIForegroundPayload(0));
                     if (mb.OwnMostRecentPurchaseHQ != 0) {
                         payloads.Add(new TextPayload("/"));
-                        if (hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 506));
+                        if (hq) payloads.Add(new UIForegroundPayload(506));
                         payloads.Add(new TextPayload($"{mb.OwnMostRecentPurchaseHQ:N0}"));
-                        if (hq) payloads.Add(new UIForegroundPayload(plugin.PluginInterface.Data, 0));
+                        if (hq) payloads.Add(new UIForegroundPayload(0));
                     }
                 }
             }
@@ -98,7 +98,7 @@ namespace PriceInsight {
                 tooltip[ItemTooltip.TooltipField.ControlsDisplay] = description.Append(payloads);
                 Task.Run(async () => {
                     await Task.Delay(7);
-                    Helper.SetControlsSectionHeight(plugin.PluginInterface, description.TextValue.Count(c => c == '\n') * 18 + 26);
+                    Helper.SetControlsSectionHeight(plugin.GameGui, description.TextValue.Count(c => c == '\n') * 18 + 26);
                 });
             }
         }

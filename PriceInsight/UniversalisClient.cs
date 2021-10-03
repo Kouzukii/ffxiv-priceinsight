@@ -4,7 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Dalamud.Plugin;
+using Dalamud.Logging;
 using Newtonsoft.Json;
 
 namespace PriceInsight {
