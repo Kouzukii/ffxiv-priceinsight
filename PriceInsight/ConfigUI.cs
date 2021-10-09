@@ -4,13 +4,13 @@ using ImGuiNET;
 
 namespace PriceInsight {
     class ConfigUI : IDisposable {
-        private Configuration configuration;
+        private readonly Configuration configuration;
 
         private bool settingsVisible = false;
 
         public bool SettingsVisible {
-            get { return settingsVisible; }
-            set { settingsVisible = value; }
+            get => settingsVisible;
+            set => settingsVisible = value;
         }
 
         public ConfigUI(Configuration configuration) {
@@ -33,21 +33,25 @@ namespace PriceInsight {
                     configuration.ShowDatacenter = configValue;
                     configuration.Save();
                 }
+
                 configValue = configuration.ShowWorld;
                 if (ImGui.Checkbox("Show home world price info", ref configValue)) {
                     configuration.ShowWorld = configValue;
                     configuration.Save();
                 }
+
                 configValue = configuration.ShowMostRecentPurchase;
                 if (ImGui.Checkbox("Show most recent purchase", ref configValue)) {
                     configuration.ShowMostRecentPurchase = configValue;
                     configuration.Save();
                 }
+
                 configValue = configuration.ShowMostRecentPurchaseWorld;
                 if (ImGui.Checkbox("Show most recent purchase on your home world", ref configValue)) {
                     configuration.ShowMostRecentPurchaseWorld = configValue;
                     configuration.Save();
                 }
+
                 // configValue = configuration.ShowAge;
                 // if (ImGui.Checkbox("Show price information age", ref configValue)) {
                 //     configuration.ShowMostRecentPurchaseWorld = configValue;

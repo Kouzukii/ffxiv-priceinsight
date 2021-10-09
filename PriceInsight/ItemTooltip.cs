@@ -26,14 +26,9 @@ namespace PriceInsight {
             ControlsDisplay = 64,
         }
 
-        private PriceInsightPlugin plugin;
         private unsafe byte*** baseTooltipPointer;
 
-        private readonly Dictionary<TooltipField, (int size, IntPtr alloc)> tooltipAllocations = new Dictionary<TooltipField, (int size, IntPtr alloc)>();
-
-        public ItemTooltip(PriceInsightPlugin plugin) {
-            this.plugin = plugin;
-        }
+        private readonly Dictionary<TooltipField, (int size, IntPtr alloc)> tooltipAllocations = new();
 
         public unsafe SeString this[TooltipField field] {
             get => Helper.ReadSeString(*(baseTooltipPointer + 4) + (byte)field);

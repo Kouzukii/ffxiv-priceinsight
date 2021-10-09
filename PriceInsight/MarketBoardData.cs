@@ -1,18 +1,18 @@
 namespace PriceInsight {
-    public struct MarketBoardData {
-        public long LastUploadTime { get; set; }
-        public long MinimumPriceNQ { get; set; }
-        public long MinimumPriceHQ { get; set; }
-        public long OwnMinimumPriceNQ { get; set; }
-        public long OwnMinimumPriceHQ { get; set; }
-        public long MostRecentPurchaseHQ { get; set; }
-        public long MostRecentPurchaseNQ { get; set; }
-        public long OwnMostRecentPurchaseHQ { get; set; }
-        public long OwnMostRecentPurchaseNQ { get; set; }
-        public string OwnWorld { get; set; }
-        public string MinimumPriceWorldNQ { get; set; }
-        public string MinimumPriceWorldHQ { get; set; }
-        public string MostRecentPurchaseWorldNQ { get; set; }
-        public string MostRecentPurchaseWorldHQ { get; set; }
+    public readonly struct MarketBoardData {
+        public long LastUploadTime { get; init; }
+        public long MinimumPriceNQ { get; init; }
+        public long MinimumPriceHQ { get; init; }
+        public long OwnMinimumPriceNQ { get; init; }
+        public long OwnMinimumPriceHQ { get; init; }
+        public long MostRecentPurchaseHQ { get; init; }
+        public long MostRecentPurchaseNQ { get; init; }
+        public long OwnMostRecentPurchaseHQ { get; init; }
+        public long OwnMostRecentPurchaseNQ { get; init; }
+        public string? OwnWorld { get; init; }
+        public string? MinimumPriceWorldNQ { get; init; }
+        public string? MinimumPriceWorldHQ { get; init; }
+        public string? MostRecentPurchaseWorldNQ { get; init; }
+        public string? MostRecentPurchaseWorldHQ { get; init; }
     }
 }

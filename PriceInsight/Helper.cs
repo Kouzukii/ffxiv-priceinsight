@@ -17,9 +17,9 @@ namespace PriceInsight {
         }
 
         public static unsafe SeString ReadSeString(byte** startPtr) {
-            if (startPtr == null) return null;
+            if (startPtr == null) return SeString.Empty;
             var start = *(startPtr);
-            if (start == null) return null;
+            if (start == null) return SeString.Empty;
             return ReadSeString(start);
         }
 
@@ -81,7 +81,7 @@ namespace PriceInsight {
 
             return current;
         }
-        
+
         private static unsafe AtkResNode* FinalPreviousNode(AtkResNode* node) {
             while (node->PrevSiblingNode != null) node = node->PrevSiblingNode;
             return node;

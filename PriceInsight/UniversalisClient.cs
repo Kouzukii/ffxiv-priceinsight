@@ -20,7 +20,7 @@ namespace PriceInsight {
             httpClient.Dispose();
         }
 
-        public async Task<MarketBoardData?> GetMarketBoardData(string datacenter, uint worldId, ulong itemId) {
+        public async Task<MarketBoardData?>? GetMarketBoardData(string datacenter, uint worldId, ulong itemId) {
             HttpResponseMessage result;
             try {
                 result = await httpClient.GetAsync(Endpoint + "/" + datacenter + "/" + itemId);
@@ -67,25 +67,25 @@ namespace PriceInsight {
             return marketBoardData;
         }
     }
-    
+
     // ReSharper disable all
     class UniversalisData {
-        public string dcName { get; set; }
+        public string? dcName { get; set; }
         public long? lastUploadTime { get; set; }
-        public List<Listing> listings { get; set; }
-        public List<Recent> recentHistory { get; set; }
+        public List<Listing>? listings { get; set; }
+        public List<Recent>? recentHistory { get; set; }
 
         public class Listing {
             public long? pricePerUnit { get; set; }
             public bool? hq { get; set; }
             public ulong? worldID { get; set; }
-            public string worldName { get; set; }
+            public string? worldName { get; set; }
         }
 
         public class Recent {
             public bool? hq { get; set; }
             public long? pricePerUnit { get; set; }
-            public string worldName { get; set; }
+            public string? worldName { get; set; }
             public ulong? worldID { get; set; }
         }
     }
