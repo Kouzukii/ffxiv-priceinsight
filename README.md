@@ -11,3 +11,7 @@ you can move your mouse or tap the ctrl key to refresh the tooltip.
 Information will only be refreshed every 60 seconds.
 
 ![preview](docs/preview.png)
+
+## Installation
+
+Check https://github.com/Kouzukii/DalamudPlugins on how to install my plugins.
