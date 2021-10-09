@@ -36,7 +36,7 @@ namespace PriceInsight {
         }
 
         public unsafe SeString this[TooltipField field] {
-            get => Helper.ReadSeString(plugin.PluginInterface, *(baseTooltipPointer + 4) + (byte)field);
+            get => Helper.ReadSeString(*(baseTooltipPointer + 4) + (byte)field);
             set {
                 var alloc = IntPtr.Zero;
                 var size = value.Encode().Length;

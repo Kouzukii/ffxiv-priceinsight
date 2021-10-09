@@ -1,8 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
+using Dalamud.Game.Gui;
 using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace PriceInsight {
@@ -17,14 +16,14 @@ namespace PriceInsight {
             *startPtr = (byte*)alloc;
         }
 
-        public static unsafe SeString ReadSeString(DalamudPluginInterface pluginInterface, byte** startPtr) {
+        public static unsafe SeString ReadSeString(byte** startPtr) {
             if (startPtr == null) return null;
             var start = *(startPtr);
             if (start == null) return null;
-            return ReadSeString(pluginInterface, start);
+            return ReadSeString(start);
         }
 
-        public static unsafe SeString ReadSeString(DalamudPluginInterface pluginInterface, byte* ptr) {
+        public static unsafe SeString ReadSeString(byte* ptr) {
             var offset = 0;
             while (true) {
                 var b = *(ptr + offset);
@@ -37,7 +36,7 @@ namespace PriceInsight {
 
             var bytes = new byte[offset];
             Marshal.Copy(new IntPtr(ptr), bytes, 0, offset);
-            return pluginInterface.SeStringManager.Parse(bytes);
+            return SeString.Parse(bytes);
         }
 
         public static unsafe void WriteSeString(byte* dst, SeString s) {
@@ -57,9 +56,9 @@ namespace PriceInsight {
             PrevFinal
         }
 
-        public static unsafe void SetControlsSectionHeight(DalamudPluginInterface pluginInterface, int height) {
+        public static unsafe void SetControlsSectionHeight(GameGui gui, int height) {
             var heightShort = (ushort)height;
-            var tooltipUi = (AtkUnitBase*)pluginInterface.Framework.Gui.GetUiObjectByName("ItemDetail", 1);
+            var tooltipUi = (AtkUnitBase*)gui.GetAddonByName("ItemDetail", 1);
             if (tooltipUi == null) return;
             var bg = GetResNodeByPath(tooltipUi->RootNode, Step.Child, Step.PrevFinal, Step.Child, Step.Child);
             if (bg != null) bg->Height = heightShort;

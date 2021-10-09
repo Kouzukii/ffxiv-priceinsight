@@ -1,6 +1,6 @@
 using System;
 using Dalamud.Hooking;
-using Dalamud.Plugin;
+using Dalamud.Logging;
 
 namespace PriceInsight {
     // Taken mostly from https://github.com/Caraxi/SimpleTweaksPlugin under the terms of AGPL3
@@ -15,7 +15,7 @@ namespace PriceInsight {
 
         public unsafe Hooks(PriceInsightPlugin plugin) {
             this.plugin = plugin;
-            var tooltipAddress = plugin.PluginInterface.TargetModuleScanner.ScanText("48 89 5C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 50 48 8B 42 ??");
+            var tooltipAddress = plugin.SigScanner.ScanText("48 89 5C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 50 48 8B 42 ??");
             tooltipHook = new Hook<TooltipDelegate>(tooltipAddress, TooltipDetour);
 
             tooltipHook?.Enable();
