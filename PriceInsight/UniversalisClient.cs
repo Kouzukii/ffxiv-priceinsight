@@ -6,28 +6,58 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Dalamud.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
-namespace PriceInsight {
-    public class UniversalisClient {
-        private const string Endpoint = "https://universalis.app/api/";
-        private readonly HttpClient httpClient;
+namespace PriceInsight; 
 
-        public UniversalisClient() {
-            httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(2000) };
-        }
+public class UniversalisClient : IDisposable {
+    private readonly HttpClient httpClient;
+    private readonly HttpClient prefetchHttpClient;
 
-        public void Dispose() {
-            httpClient.Dispose();
-        }
+    public UniversalisClient() {
+        httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(5000) };
+        prefetchHttpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(30000) };
+    }
 
-        public async Task<MarketBoardData?>? GetMarketBoardData(string datacenter, uint worldId, ulong itemId) {
-            HttpResponseMessage result;
-            try {
-                result = await httpClient.GetAsync(Endpoint + "/" + datacenter + "/" + itemId);
-            } catch (Exception ex) {
-                PluginLog.LogError(ex, "Failed to retrieve data from Universalis for itemId {0} / dc {1}.", itemId, datacenter);
+    public void Dispose() {
+        httpClient.Dispose();
+        prefetchHttpClient.Dispose();
+    }
+
+    public async Task<MarketBoardData?> GetMarketBoardData(string datacenter, uint worldId, ulong itemId) {
+        HttpResponseMessage result;
+        try {
+            result = await httpClient.GetAsync($"https://universalis.app/api/v2/{datacenter}/{itemId}");
+
+            if (result.StatusCode != HttpStatusCode.OK) {
+                PluginLog.LogError("Failed to retrieve data from Universalis for itemId {0} / dc {1} with sc {2}.", itemId, datacenter, result.StatusCode);
                 return null;
             }
+
+            var item = JsonConvert.DeserializeObject<ItemData>(await result.Content.ReadAsStringAsync());
+            if (item == null) {
+                PluginLog.LogError("Failed to deserialize Universalis response for itemId {0} / dc {1}.", itemId, datacenter);
+                return null;
+            }
+
+            return ParseMarketBoardData(worldId, item);
+        } catch (Exception ex) {
+            PluginLog.LogError(ex, "Failed to retrieve data from Universalis for itemId {0} / dc {1}.", itemId, datacenter);
+            return null;
+        }
+    }
+
+    public async Task<Dictionary<ulong, MarketBoardData>?> GetMarketBoardDataList(string datacenter, uint worldId, List<ulong> itemId) {
+        HttpResponseMessage result;
+        if (itemId.Count == 1) {
+            var dict = new Dictionary<ulong, MarketBoardData>();
+            if (await GetMarketBoardData(datacenter, worldId, itemId[0]) is { } data)
+                dict.Add(itemId[0], data);
+            return dict;
+        }
+
+        try {
+            result = await prefetchHttpClient.GetAsync($"https://universalis.app/api/{datacenter}/{string.Join(',', itemId.Select(i => i.ToString()))}");
 
             if (result.StatusCode != HttpStatusCode.OK) {
                 PluginLog.LogError("Failed to retrieve data from Universalis for itemId {0} / dc {1} with sc {2}.", itemId, datacenter, result.StatusCode);
@@ -40,54 +70,78 @@ namespace PriceInsight {
                 return null;
             }
 
-            var cheapestNQ = json.listings?.FirstOrDefault(l => !(l.hq ?? true));
-            var cheapestHQ = json.listings?.FirstOrDefault(l => l.hq ?? false);
-            var ownCheapestNQ = json.listings?.FirstOrDefault(l => !(l.hq ?? true) && l.worldID == worldId);
-            var ownCheapestHQ = json.listings?.FirstOrDefault(l => (l.hq ?? false) && l.worldID == worldId);
-            var recentNQ = json.recentHistory?.FirstOrDefault(l => !(l.hq ?? true));
-            var recentHQ = json.recentHistory?.FirstOrDefault(l => l.hq ?? false);
-            var ownRecentNQ = json.recentHistory?.FirstOrDefault(l => !(l.hq ?? true) && l.worldID == worldId);
-            var ownRecentHQ = json.recentHistory?.FirstOrDefault(l => (l.hq ?? false) && l.worldID == worldId);
-            var marketBoardData = new MarketBoardData {
-                LastUploadTime = json.lastUploadTime ?? 0,
-                MinimumPriceNQ = cheapestNQ?.pricePerUnit ?? 0,
-                MinimumPriceWorldNQ = cheapestNQ?.worldName,
-                MinimumPriceHQ = cheapestHQ?.pricePerUnit ?? 0,
-                MinimumPriceWorldHQ = cheapestHQ?.worldName,
-                OwnMinimumPriceNQ = ownCheapestNQ?.pricePerUnit ?? 0,
-                OwnMinimumPriceHQ = ownCheapestHQ?.pricePerUnit ?? 0,
-                OwnWorld = ownCheapestNQ?.worldName ?? ownCheapestHQ?.worldName,
-                MostRecentPurchaseNQ = recentNQ?.pricePerUnit ?? 0,
-                MostRecentPurchaseHQ = recentHQ?.pricePerUnit ?? 0,
-                MostRecentPurchaseWorldNQ = recentNQ?.worldName,
-                MostRecentPurchaseWorldHQ = recentHQ?.worldName,
-                OwnMostRecentPurchaseNQ = ownRecentNQ?.pricePerUnit ?? 0,
-                OwnMostRecentPurchaseHQ = ownRecentHQ?.pricePerUnit ?? 0,
-            };
-            return marketBoardData;
+            var items = new Dictionary<ulong, MarketBoardData>();
+            if (json.items != null)
+                foreach (var item in json.items) {
+                    if (item.itemID is { } id)
+                        items.Add(id, ParseMarketBoardData(worldId, item));
+                }
+
+            return items;
+        } catch (Exception ex) {
+            PluginLog.LogError(ex, "Failed to retrieve data from Universalis for itemId {0} / dc {1}.", itemId, datacenter);
+            return null;
         }
     }
 
-    // ReSharper disable all
-    class UniversalisData {
-        public string? dcName { get; set; }
-        public long? lastUploadTime { get; set; }
-        public List<Listing>? listings { get; set; }
-        public List<Recent>? recentHistory { get; set; }
-
-        public class Listing {
-            public long? pricePerUnit { get; set; }
-            public bool? hq { get; set; }
-            public ulong? worldID { get; set; }
-            public string? worldName { get; set; }
-        }
-
-        public class Recent {
-            public bool? hq { get; set; }
-            public long? pricePerUnit { get; set; }
-            public string? worldName { get; set; }
-            public ulong? worldID { get; set; }
-        }
+    private MarketBoardData ParseMarketBoardData(uint worldId, ItemData item) {
+        var marketBoardData = new MarketBoardData {
+            LastUploadTime = item.lastUploadTime,
+            MinimumPriceNQ = item.listings?.FirstOrDefault(l => !l.hq),
+            MinimumPriceHQ = item.listings?.FirstOrDefault(l => l.hq),
+            OwnMinimumPriceNQ = item.listings?.FirstOrDefault(l => !l.hq && l.worldID == worldId),
+            OwnMinimumPriceHQ = item.listings?.FirstOrDefault(l => l.hq && l.worldID == worldId),
+            MostRecentPurchaseNQ = item.recentHistory?.FirstOrDefault(l => !l.hq),
+            MostRecentPurchaseHQ = item.recentHistory?.FirstOrDefault(l => l.hq),
+            OwnMostRecentPurchaseNQ = item.recentHistory?.FirstOrDefault(l => !l.hq && l.worldID == worldId),
+            OwnMostRecentPurchaseHQ = item.recentHistory?.FirstOrDefault(l => l.hq && l.worldID == worldId),
+        };
+        return marketBoardData;
     }
-    // ReSharper restore all
 }
+
+// ReSharper disable all
+class UniversalisData {
+    public List<ItemData>? items { get; set; }
+}
+
+class ItemData {
+    public ulong? itemID { get; set; }
+    public string? dcName { get; set; }
+    [JsonConverter(typeof(UnixMilliDateTimeConverter))]
+    public DateTime? lastUploadTime { get; set; }
+    public List<ListingData>? listings { get; set; }
+    public List<RecentData>? recentHistory { get; set; }
+
+    public class ListingData {
+        public long pricePerUnit { get; set; }
+        public bool hq { get; set; }
+        public ulong worldID { get; set; }
+        public string worldName { get; set; } = null!;
+
+        [JsonConverter(typeof(UnixDateTimeConverter))]
+        public DateTime lastReviewTime { get; set; }
+
+        public static implicit operator Listing?(ListingData? data) {
+            if (data == null)
+                return null;
+            return new Listing { Price = data.pricePerUnit, Time = data.lastReviewTime, World = data.worldName };
+        }
+    }
+
+    public class RecentData {
+        public bool hq { get; set; }
+        public long pricePerUnit { get; set; }
+        public string worldName { get; set; } = null!;
+        public ulong worldID { get; set; }
+        [JsonConverter(typeof(UnixDateTimeConverter))]
+        public DateTime timestamp { get; set; }
+            
+        public static implicit operator Listing?(RecentData? data) {
+            if (data == null)
+                return null;
+            return new Listing { Price = data.pricePerUnit, Time = data.timestamp, World = data.worldName };
+        }
+    }
+}
+// ReSharper restore all

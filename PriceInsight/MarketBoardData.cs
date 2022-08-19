@@ -1,18 +1,21 @@
-namespace PriceInsight {
-    public readonly struct MarketBoardData {
-        public long LastUploadTime { get; init; }
-        public long MinimumPriceNQ { get; init; }
-        public long MinimumPriceHQ { get; init; }
-        public long OwnMinimumPriceNQ { get; init; }
-        public long OwnMinimumPriceHQ { get; init; }
-        public long MostRecentPurchaseHQ { get; init; }
-        public long MostRecentPurchaseNQ { get; init; }
-        public long OwnMostRecentPurchaseHQ { get; init; }
-        public long OwnMostRecentPurchaseNQ { get; init; }
-        public string? OwnWorld { get; init; }
-        public string? MinimumPriceWorldNQ { get; init; }
-        public string? MinimumPriceWorldHQ { get; init; }
-        public string? MostRecentPurchaseWorldNQ { get; init; }
-        public string? MostRecentPurchaseWorldHQ { get; init; }
-    }
+using System;
+
+namespace PriceInsight; 
+
+public readonly struct MarketBoardData {
+    public DateTime? LastUploadTime { get; init; }
+    public Listing? MinimumPriceNQ { get; init; }
+    public Listing? MinimumPriceHQ { get; init; }
+    public Listing? OwnMinimumPriceNQ { get; init; }
+    public Listing? OwnMinimumPriceHQ { get; init; }
+    public Listing? MostRecentPurchaseHQ { get; init; }
+    public Listing? MostRecentPurchaseNQ { get; init; }
+    public Listing? OwnMostRecentPurchaseHQ { get; init; }
+    public Listing? OwnMostRecentPurchaseNQ { get; init; }
+}
+
+public readonly struct Listing {
+    public long Price { get; init; }
+    public string World { get; init; }
+    public DateTime Time { get; init; }
 }
