@@ -1,6 +1,9 @@
 name: Price Insight
 author: Kouzukii
-description: See item marketboard prices on hover!
+punchline: See item marketboard prices on hover!
+description: |
+  Whenever you mouseover an item, it will show you the NQ/HQ marketboard prices at the bottom as well as the most recent purchase.
+  The marketboard info will sometimes not be immediately available, you can move your mouse or tap the ctrl key to refresh the tooltip.
 repo_url: "https://github.com/kouzukii/ffxiv-priceinsight"
 tags: [marketboard, items, price]
 category_tags: [ui, utility]
