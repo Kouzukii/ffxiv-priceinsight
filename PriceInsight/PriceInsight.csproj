@@ -28,6 +28,7 @@
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<Nullable>enable</Nullable>
 		<ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 	</PropertyGroup>
 
 	<!-- Release Configuration -->
@@ -37,17 +38,14 @@
 
 	<!-- Dalamud Configuration -->
 	<PropertyGroup>
-		<DalamudVersion>dev</DalamudVersion>
-		<DalamudLocal>../dalamud/</DalamudLocal>
-		<DalamudXIVLauncher>$(APPDATA)\XIVLauncher\addon\Hooks\$(DalamudVersion)</DalamudXIVLauncher>
+		<DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
 	</PropertyGroup>
 
 	<!-- Assembly Reference Locations -->
 	<PropertyGroup>
 		<AssemblySearchPaths>
 			$(AssemblySearchPaths);
-			$(DalamudLocal);
-			$(DalamudXIVLauncher);
+			$(DalamudLibPath);
 		</AssemblySearchPaths>
 	</PropertyGroup>
 
@@ -77,7 +75,7 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.5" />
+		<PackageReference Include="DalamudPackager" Version="2.1.6" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="System.Runtime.Caching" Version="6.0.0" />
