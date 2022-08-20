@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PriceInsight", "PriceInsight\PriceInsight.csproj", "{13C812E9-0D42-4B95-8646-40EEBF30636F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PriceInsight", "PriceInsight.csproj", "{13C812E9-0D42-4B95-8646-40EEBF30636F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
