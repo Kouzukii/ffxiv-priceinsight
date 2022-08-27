@@ -97,9 +97,8 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
                         if (items.Count >= 50) {
 #if !DEBUG // Don't spam universalis while debugging
-                            ItemPriceLookup.Prefetch(items);
+                            ItemPriceLookup.Fetch(items, false);
 #endif
-                            PluginLog.LogInformation($"Prefetching {items.Count} items");
                             items.Clear();
                         }
                     }
@@ -114,9 +113,8 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
                 if (items.Count > 0) {
 #if !DEBUG // Don't spam universalis while debugging
-                    ItemPriceLookup.Prefetch(items);
+                    ItemPriceLookup.Fetch(items, false);
 #endif
-                    PluginLog.LogInformation($"Prefetching {items.Count} items");
                 }
             }
         } catch (Exception e) {

@@ -24,7 +24,7 @@ public class Hooks : IDisposable {
 
     private unsafe void* ItemDetailOnUpdateDetour(AtkUnitBase* atkUnitBase, NumberArrayData** nums, StringArrayData** strings) {
         try {
-            plugin.ItemPriceTooltip.Setup(atkUnitBase);
+            plugin.ItemPriceTooltip.RestoreToNormal(atkUnitBase);
         } catch (Exception ex) {
             PluginLog.LogError(ex, "Failed to handle item detail detour");
         }

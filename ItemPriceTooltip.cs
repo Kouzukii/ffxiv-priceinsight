@@ -5,7 +5,7 @@ using Dalamud.Game.Text.SeStringHandling.Payloads;
 using FFXIVClientStructs.FFXIV.Client.System.Memory;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
-namespace PriceInsight; 
+namespace PriceInsight;
 
 public class ItemPriceTooltip : IDisposable {
     private readonly PriceInsightPlugin plugin;
@@ -17,26 +17,32 @@ public class ItemPriceTooltip : IDisposable {
         this.plugin = plugin;
     }
 
-    public unsafe void Setup(AtkUnitBase* atkUnitBase) {
-        for (var i = 0; i < atkUnitBase->UldManager.NodeListCount; i++) {
-            var n = atkUnitBase->UldManager.NodeList[i];
+    public unsafe void RestoreToNormal(AtkUnitBase* itemTooltip) {
+        for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
+            var n = itemTooltip->UldManager.NodeList[i];
             if (n->NodeID != NodeId)
                 continue;
-            var insertNode = atkUnitBase->GetNodeById(2);
+            var insertNode = itemTooltip->GetNodeById(2);
             if (insertNode == null)
                 return;
-            atkUnitBase->WindowNode->AtkResNode.SetHeight((ushort)(atkUnitBase->WindowNode->AtkResNode.Height - n->Height - 4));
-            atkUnitBase->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(atkUnitBase->WindowNode->AtkResNode.Height);
+            itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height - n->Height - 4));
+            itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
             insertNode->SetPositionFloat(insertNode->X, insertNode->Y - n->Height - 4);
+            break;
         }
     }
 
-    public unsafe void OnItemTooltip(AtkUnitBase* atkUnitBase) {
-        var payloads = GetMbInfo(plugin.GameGui.HoveredItem);
+    public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
+        var (marketBoardData, isMarketable) = plugin.ItemPriceLookup.Get((uint)(plugin.GameGui.HoveredItem % 500000));
+        var payloads = isMarketable ? ParseMbData(plugin.GameGui.HoveredItem >= 500000, marketBoardData) : new List<Payload>();
 
+        UpdateItemTooltip(itemTooltip, payloads);
+    }
+
+    private static unsafe void UpdateItemTooltip(AtkUnitBase* itemTooltip, List<Payload> payloads) {
         AtkTextNode* priceNode = null;
-        for (var i = 0; i < atkUnitBase->UldManager.NodeListCount; i++) {
-            var node = atkUnitBase->UldManager.NodeList[i];
+        for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
+            var node = itemTooltip->UldManager.NodeList[i];
             if (node == null || node->NodeID != NodeId)
                 continue;
             priceNode = (AtkTextNode*)node;
@@ -49,11 +55,11 @@ public class ItemPriceTooltip : IDisposable {
             return;
         }
 
-        var insertNode = atkUnitBase->GetNodeById(2);
+        var insertNode = itemTooltip->GetNodeById(2);
         if (insertNode == null)
             return;
         if (priceNode == null) {
-            var baseNode = atkUnitBase->GetTextNodeById(43);
+            var baseNode = itemTooltip->GetTextNodeById(43);
             if (baseNode == null)
                 return;
             priceNode = IMemorySpace.GetUISpace()->Create<AtkTextNode>();
@@ -78,25 +84,20 @@ public class ItemPriceTooltip : IDisposable {
                 prev->NextSiblingNode = (AtkResNode*)priceNode;
             priceNode->AtkResNode.PrevSiblingNode = prev;
             priceNode->AtkResNode.NextSiblingNode = insertNode;
-            atkUnitBase->UldManager.UpdateDrawNodeList();
+            itemTooltip->UldManager.UpdateDrawNodeList();
         }
 
         priceNode->AtkResNode.ToggleVisibility(true);
         priceNode->SetText(new SeString(payloads).Encode());
         priceNode->ResizeNodeForCurrentText();
-        priceNode->AtkResNode.SetPositionFloat(17, atkUnitBase->WindowNode->AtkResNode.Height - 8f);
-        atkUnitBase->WindowNode->AtkResNode.SetHeight((ushort)(atkUnitBase->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
-        atkUnitBase->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(atkUnitBase->WindowNode->AtkResNode.Height);
+        priceNode->AtkResNode.SetPositionFloat(17, itemTooltip->WindowNode->AtkResNode.Height - 8f);
+        itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
+        itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
         insertNode->SetPositionFloat(insertNode->X, insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
-    private List<Payload> GetMbInfo(ulong id) {
-        var hq = id >= 500000;
-        id %= 500000;
-        var (marketBoardData, isMarketable) = plugin.ItemPriceLookup.Get(id);
+    private List<Payload> ParseMbData(bool hq, MarketBoardData? marketBoardData) {
         var payloads = new List<Payload>();
-        if (!isMarketable)
-            return payloads;
         if (marketBoardData == null) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.LevelSync));
@@ -118,13 +119,17 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{minWorld}): "));
-                if (!hq)
-                    payloads.Add(new UIForegroundPayload(506));
-                payloads.Add(new TextPayload($"{mb.MinimumPriceNQ?.Price:N0}{GilIcon}"));
-                if (!hq)
-                    payloads.Add(new UIForegroundPayload(0));
+                if (mb.MinimumPriceNQ != null) {
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(506));
+                    payloads.Add(new TextPayload($"{mb.MinimumPriceNQ?.Price:N0}{GilIcon}"));
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(0));
+                }
+
                 if (mb.MinimumPriceHQ != null) {
-                    payloads.Add(new TextPayload("/"));
+                    if (mb.MinimumPriceNQ != null)
+                        payloads.Add(new TextPayload("/"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{HQIcon}{mb.MinimumPriceHQ?.Price:N0}{GilIcon}"));
@@ -140,7 +145,7 @@ public class ItemPriceTooltip : IDisposable {
                 }
             }
 
-            if (plugin.Configuration.ShowWorld && ownWorld != null || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld)) {
+            if (ownWorld != null && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
                 if (!priceHeader)
                     payloads.Add(new TextPayload("Marketboard Price:"));
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
@@ -176,13 +181,17 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{recentWorld}): "));
-                if (!hq)
-                    payloads.Add(new UIForegroundPayload(506));
-                payloads.Add(new TextPayload($"{mb.MostRecentPurchaseNQ?.Price:N0}{GilIcon}"));
-                if (!hq)
-                    payloads.Add(new UIForegroundPayload(0));
+                if (mb.MostRecentPurchaseNQ != null) {
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(506));
+                    payloads.Add(new TextPayload($"{mb.MostRecentPurchaseNQ?.Price:N0}{GilIcon}"));
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(0));
+                }
+
                 if (mb.MostRecentPurchaseHQ != null) {
-                    payloads.Add(new TextPayload("/"));
+                    if (mb.MostRecentPurchaseNQ != null)
+                        payloads.Add(new TextPayload("/"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{HQIcon}{mb.MostRecentPurchaseHQ?.Price:N0}{GilIcon}"));
@@ -198,8 +207,7 @@ public class ItemPriceTooltip : IDisposable {
                 }
             }
 
-            if (plugin.Configuration.ShowMostRecentPurchaseWorld && ownRecentWorld != null ||
-                (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownRecentWorld)) {
+            if (ownRecentWorld != null && (plugin.Configuration.ShowMostRecentPurchaseWorld || (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownRecentWorld))) {
                 if (!recentHeader) {
                     if (payloads.Count > 0)
                         payloads.Add(new TextPayload("\n"));
@@ -207,13 +215,17 @@ public class ItemPriceTooltip : IDisposable {
                 }
 
                 payloads.Add(new TextPayload($"\n  Home ({ownRecentWorld}): "));
-                if (!hq)
-                    payloads.Add(new UIForegroundPayload(506));
-                payloads.Add(new TextPayload($"{mb.OwnMostRecentPurchaseNQ?.Price:N0}{GilIcon}"));
-                if (!hq)
-                    payloads.Add(new UIForegroundPayload(0));
+                if (mb.OwnMostRecentPurchaseNQ != null) {
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(506));
+                    payloads.Add(new TextPayload($"{mb.OwnMostRecentPurchaseNQ?.Price:N0}{GilIcon}"));
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(0));
+                }
+
                 if (mb.OwnMostRecentPurchaseHQ != null) {
-                    payloads.Add(new TextPayload("/"));
+                    if (mb.OwnMostRecentPurchaseNQ != null)
+                        payloads.Add(new TextPayload("/"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{HQIcon}{mb.OwnMostRecentPurchaseHQ?.Price:N0}{GilIcon}"));
@@ -231,6 +243,18 @@ public class ItemPriceTooltip : IDisposable {
         }
 
         return payloads;
+    }
+
+    public void Refresh(IDictionary<uint,MarketBoardData> mbData) {
+        if (mbData.TryGetValue((uint)(plugin.GameGui.HoveredItem % 500000), out var data)) {
+            var tooltip = plugin.GameGui.GetAddonByName("ItemDetail", 1);
+            if (tooltip == IntPtr.Zero) return;
+            var newText = ParseMbData(plugin.GameGui.HoveredItem >= 500000, data);
+            unsafe {
+                RestoreToNormal((AtkUnitBase*)tooltip);
+                UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
+            }
+        }
     }
 
     private void Cleanup() {

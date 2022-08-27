@@ -11,17 +11,10 @@ using Newtonsoft.Json.Converters;
 namespace PriceInsight; 
 
 public class UniversalisClient : IDisposable {
-    private readonly HttpClient httpClient;
-    private readonly HttpClient prefetchHttpClient;
-
-    public UniversalisClient() {
-        httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(5000) };
-        prefetchHttpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(30000) };
-    }
+    private readonly HttpClient httpClient = new() { Timeout = TimeSpan.FromMilliseconds(60000) };
 
     public void Dispose() {
         httpClient.Dispose();
-        prefetchHttpClient.Dispose();
     }
 
     public async Task<MarketBoardData?> GetMarketBoardData(string datacenter, uint worldId, ulong itemId) {
@@ -47,17 +40,18 @@ public class UniversalisClient : IDisposable {
         }
     }
 
-    public async Task<Dictionary<ulong, MarketBoardData>?> GetMarketBoardDataList(string datacenter, uint worldId, List<ulong> itemId) {
+    public async Task<Dictionary<uint, MarketBoardData>?> GetMarketBoardDataList(string datacenter, uint worldId, List<uint> itemId) {
         HttpResponseMessage result;
+        // when only 1 item is queried, Universalis doesn't respond with an array
         if (itemId.Count == 1) {
-            var dict = new Dictionary<ulong, MarketBoardData>();
+            var dict = new Dictionary<uint, MarketBoardData>();
             if (await GetMarketBoardData(datacenter, worldId, itemId[0]) is { } data)
                 dict.Add(itemId[0], data);
             return dict;
         }
 
         try {
-            result = await prefetchHttpClient.GetAsync($"https://universalis.app/api/{datacenter}/{string.Join(',', itemId.Select(i => i.ToString()))}");
+            result = await httpClient.GetAsync($"https://universalis.app/api/v2/{datacenter}/{string.Join(',', itemId.Select(i => i.ToString()))}");
 
             if (result.StatusCode != HttpStatusCode.OK) {
                 PluginLog.LogError("Failed to retrieve data from Universalis for itemId {0} / dc {1} with sc {2}.", itemId, datacenter, result.StatusCode);
@@ -70,11 +64,10 @@ public class UniversalisClient : IDisposable {
                 return null;
             }
 
-            var items = new Dictionary<ulong, MarketBoardData>();
+            var items = new Dictionary<uint, MarketBoardData>();
             if (json.items != null)
-                foreach (var item in json.items) {
-                    if (item.itemID is { } id)
-                        items.Add(id, ParseMarketBoardData(worldId, item));
+                foreach (var (id, item) in json.items) {
+                    items.Add(id, ParseMarketBoardData(worldId, item));
                 }
 
             return items;
@@ -102,11 +95,10 @@ public class UniversalisClient : IDisposable {
 
 // ReSharper disable all
 class UniversalisData {
-    public List<ItemData>? items { get; set; }
+    public Dictionary<uint, ItemData>? items { get; set; }
 }
 
 class ItemData {
-    public ulong? itemID { get; set; }
     public string? dcName { get; set; }
     [JsonConverter(typeof(UnixMilliDateTimeConverter))]
     public DateTime? lastUploadTime { get; set; }
