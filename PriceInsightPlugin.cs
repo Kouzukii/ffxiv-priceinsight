@@ -9,7 +9,7 @@ using Dalamud.Logging;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Client.Game;
 
-namespace PriceInsight; 
+namespace PriceInsight;
 
 public class PriceInsightPlugin : IDalamudPlugin {
     public string Name => "PriceInsight";
@@ -93,6 +93,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
                             emptyItems++;
                             continue;
                         }
+
                         items.Add(item->ItemID);
 
                         if (items.Count >= 50) {
@@ -108,6 +109,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
                         inventoriesToScan[type] = DateTime.Now.AddSeconds(-59 * 60 + 10);
                         continue;
                     }
+
                     inventoriesToScan[type] = DateTime.Now;
                 }
 

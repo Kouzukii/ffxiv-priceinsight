@@ -40,8 +40,7 @@ public class ItemPriceLookup : IDisposable {
         // Don't spam universalis with requests
         if ((lastRequest - DateTime.Now).TotalMilliseconds < 500) {
             lock (requestedItems) {
-                requestedItems.Add(itemId);
-                if (requestedItems.Count == 1)
+                if (requestedItems.Add(itemId) && requestedItems.Count == 1)
                     Task.Run(BufferFetch);
             }
         } else {
@@ -97,7 +96,7 @@ public class ItemPriceLookup : IDisposable {
         });
 
         foreach (var id in itemIds) {
-            cache.Add(id.ToString(), itemTask.ContinueWith(task => task.Result?.GetValueOrDefault(id), TaskContinuationOptions.OnlyOnRanToCompletion),
+            cache.Set(id.ToString(), itemTask.ContinueWith(task => task.Result?.GetValueOrDefault(id), TaskContinuationOptions.OnlyOnRanToCompletion),
                 DateTimeOffset.Now.AddMinutes(90));
         }
     }
