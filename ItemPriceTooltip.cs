@@ -27,6 +27,7 @@ public class ItemPriceTooltip : IDisposable {
                 return;
             itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height - n->Height - 4));
             itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
+            itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y + n->Height));
             insertNode->SetPositionFloat(insertNode->X, insertNode->Y - n->Height - 4);
             break;
         }
@@ -93,6 +94,7 @@ public class ItemPriceTooltip : IDisposable {
         priceNode->AtkResNode.SetPositionFloat(17, itemTooltip->WindowNode->AtkResNode.Height - 8f);
         itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
         itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
+        itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y - priceNode->AtkResNode.Height));
         insertNode->SetPositionFloat(insertNode->X, insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
