@@ -20,7 +20,7 @@ public class ItemPriceTooltip : IDisposable {
     public unsafe void RestoreToNormal(AtkUnitBase* itemTooltip) {
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
             var n = itemTooltip->UldManager.NodeList[i];
-            if (n->NodeID != NodeId)
+            if (n->NodeID != NodeId || !n->IsVisible)
                 continue;
             var insertNode = itemTooltip->GetNodeById(2);
             if (insertNode == null)
@@ -34,6 +34,7 @@ public class ItemPriceTooltip : IDisposable {
     }
 
     public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
+        if (plugin.GameGui.HoveredItem >= 2000000) return;
         var (marketBoardData, isMarketable) = plugin.ItemPriceLookup.Get((uint)(plugin.GameGui.HoveredItem % 500000));
         var payloads = isMarketable ? ParseMbData(plugin.GameGui.HoveredItem >= 500000, marketBoardData) : new List<Payload>();
 
@@ -110,7 +111,7 @@ public class ItemPriceTooltip : IDisposable {
             if (plugin.Configuration.IgnoreOldData && DateTime.Now.Subtract(mb.LastUploadTime ?? DateTime.UnixEpoch).TotalDays > 29)
                 return payloads;
             var ownWorld = mb.OwnMinimumPriceHQ?.World ?? mb.OwnMinimumPriceNQ?.World;
-            var minWorld = hq ? mb.MinimumPriceHQ?.World : mb.MinimumPriceNQ?.World;
+            var minWorld = hq ? mb.MinimumPriceHQ?.World ?? mb.MinimumPriceNQ?.World : mb.MinimumPriceNQ?.World ?? mb.MinimumPriceHQ?.World;
             var priceHeader = false;
             var recentHeader = false;
 
@@ -151,13 +152,17 @@ public class ItemPriceTooltip : IDisposable {
                 if (!priceHeader)
                     payloads.Add(new TextPayload("Marketboard Price:"));
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
-                if (!hq)
-                    payloads.Add(new UIForegroundPayload(506));
-                payloads.Add(new TextPayload($"{mb.OwnMinimumPriceNQ?.Price:N0}{GilIcon}"));
-                if (!hq)
-                    payloads.Add(new UIForegroundPayload(0));
+                if (mb.OwnMinimumPriceNQ != null) {
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(506));
+                    payloads.Add(new TextPayload($"{mb.OwnMinimumPriceNQ?.Price:N0}{GilIcon}"));
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(0));
+                }
+
                 if (mb.OwnMinimumPriceHQ != null) {
-                    payloads.Add(new TextPayload("/"));
+                    if (mb.OwnMinimumPriceNQ != null)
+                        payloads.Add(new TextPayload("/"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{HQIcon}{mb.OwnMinimumPriceHQ?.Price:N0}{GilIcon}"));
@@ -248,6 +253,7 @@ public class ItemPriceTooltip : IDisposable {
     }
 
     public void Refresh(IDictionary<uint,MarketBoardData> mbData) {
+        if (plugin.GameGui.HoveredItem >= 2000000) return;
         if (mbData.TryGetValue((uint)(plugin.GameGui.HoveredItem % 500000), out var data)) {
             var tooltip = plugin.GameGui.GetAddonByName("ItemDetail", 1);
             if (tooltip == IntPtr.Zero) return;

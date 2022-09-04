@@ -24,7 +24,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
     public Configuration Configuration { get; }
     public ItemPriceTooltip ItemPriceTooltip { get; }
     public Hooks Hooks { get; }
-    public ItemPriceLookup ItemPriceLookup { get; }
+    public ItemPriceLookup ItemPriceLookup { get; private set; }
     public UniversalisClient UniversalisClient { get; }
 
     private readonly ConfigUI ui;
@@ -71,6 +71,13 @@ public class PriceInsightPlugin : IDalamudPlugin {
         pluginInterface.UiBuilder.Draw += () => ui.Draw();
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfigUI;
         framework.Update += FrameworkOnUpdate;
+        clientState.Logout += ClientStateOnLogout;
+    }
+
+    private void ClientStateOnLogout(object? sender, EventArgs e) {
+        var ipl = ItemPriceLookup;
+        ItemPriceLookup = new ItemPriceLookup(this); // reset all cached prices when logging out
+        ipl.Dispose();
     }
 
     private void FrameworkOnUpdate(Framework framework) {
@@ -89,12 +96,13 @@ public class PriceInsightPlugin : IDalamudPlugin {
                     var emptyItems = 0;
                     for (var i = 0; i < container->Size; i++) {
                         var item = &container->Items[i];
-                        if (item->ItemID == 0) {
+                        var itemId = item->ItemID;
+                        if (itemId == 0) {
                             emptyItems++;
                             continue;
                         }
 
-                        items.Add(item->ItemID);
+                        items.Add(itemId % 500000);
 
                         if (items.Count >= 50) {
 #if !DEBUG // Don't spam universalis while debugging
@@ -130,6 +138,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
     public void Dispose() {
         Framework.Update -= FrameworkOnUpdate;
+        ClientState.Logout -= ClientStateOnLogout;
         Hooks.Dispose();
         ItemPriceTooltip.Dispose();
         ItemPriceLookup.Dispose();
