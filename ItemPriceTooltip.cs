@@ -34,7 +34,10 @@ public class ItemPriceTooltip : IDisposable {
     }
 
     public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
-        if (plugin.GameGui.HoveredItem >= 2000000) return;
+        if (plugin.GameGui.HoveredItem >= 2000000) {
+            UpdateItemTooltip(itemTooltip, new List<Payload>());
+            return;
+        }
         var (marketBoardData, isMarketable) = plugin.ItemPriceLookup.Get((uint)(plugin.GameGui.HoveredItem % 500000));
         var payloads = isMarketable ? ParseMbData(plugin.GameGui.HoveredItem >= 500000, marketBoardData) : new List<Payload>();
 
