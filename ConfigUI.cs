@@ -26,10 +26,15 @@ class ConfigUI : IDisposable {
             return;
         }
 
-        ImGui.SetNextWindowSize(ImGuiHelpers.ScaledVector2(320, 170), ImGuiCond.Always);
         if (ImGui.Begin("Price Insight Config", ref settingsVisible,
-                ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)) {
-            var configValue = configuration.ShowDatacenter;
+                ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.AlwaysAutoResize)) {
+            var configValue = configuration.RefreshWithAlt;
+            if (ImGui.Checkbox("Tap Alt to refresh prices", ref configValue)) {
+                configuration.RefreshWithAlt = configValue;
+                configuration.Save();
+            }
+            
+            configValue = configuration.ShowDatacenter;
             if (ImGui.Checkbox("Show datacenter price info", ref configValue)) {
                 configuration.ShowDatacenter = configValue;
                 configuration.Save();

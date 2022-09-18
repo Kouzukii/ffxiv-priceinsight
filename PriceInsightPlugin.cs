@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Logging;
@@ -14,12 +15,13 @@ namespace PriceInsight;
 public class PriceInsightPlugin : IDalamudPlugin {
     public string Name => "PriceInsight";
 
-    public CommandManager CommandManager { get; }
-    public ClientState ClientState { get; }
-    public DataManager DataManager { get; }
-    public SigScanner SigScanner { get; }
-    public Framework Framework { get; }
-    public GameGui GameGui { get; }
+    internal CommandManager CommandManager { get; }
+    internal ClientState ClientState { get; }
+    internal DataManager DataManager { get; }
+    internal SigScanner SigScanner { get; }
+    internal Framework Framework { get; }
+    internal GameGui GameGui { get; }
+    internal KeyState KeyState { get; }
 
     public Configuration Configuration { get; }
     public ItemPriceTooltip ItemPriceTooltip { get; }
@@ -49,13 +51,14 @@ public class PriceInsightPlugin : IDalamudPlugin {
     };
 
     public PriceInsightPlugin(DalamudPluginInterface pluginInterface, CommandManager commandManager, ClientState clientState, DataManager dataManager,
-        SigScanner sigScanner, Framework framework, GameGui gameGui) {
+        SigScanner sigScanner, Framework framework, GameGui gameGui, KeyState keyState) {
         CommandManager = commandManager;
         ClientState = clientState;
         DataManager = dataManager;
         SigScanner = sigScanner;
         Framework = framework;
         GameGui = gameGui;
+        KeyState = keyState;
 
         Configuration = Configuration.Get(pluginInterface);
 

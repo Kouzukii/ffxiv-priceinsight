@@ -1,6 +1,7 @@
 using System;
 using Dalamud.Hooking;
 using Dalamud.Logging;
+using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace PriceInsight; 
@@ -11,14 +12,12 @@ public class Hooks : IDisposable {
         
     private unsafe delegate void* AddonOnUpdate(AtkUnitBase* atkUnitBase, NumberArrayData** nums, StringArrayData** strings);
 
-    private readonly Hook<AddonOnUpdate> itemDetailOnUpdateHook;
+    [Signature("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 41 54 41 55 41 56 41 57 48 83 EC 20 4C 8B AA", DetourName = nameof(ItemDetailOnUpdateDetour))]
+    private readonly Hook<AddonOnUpdate> itemDetailOnUpdateHook = null!;
 
-    public unsafe Hooks(PriceInsightPlugin plugin) {
+    public Hooks(PriceInsightPlugin plugin) {
         this.plugin = plugin;
-        var itemDetailOnUpdateAddress =
-            plugin.SigScanner.ScanText("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 41 54 41 55 41 56 41 57 48 83 EC 20 4C 8B AA");
-
-        itemDetailOnUpdateHook = Hook<AddonOnUpdate>.FromAddress(itemDetailOnUpdateAddress, ItemDetailOnUpdateDetour);
+        SignatureHelper.Initialise(this);
         itemDetailOnUpdateHook.Enable();
     }
 

@@ -18,6 +18,8 @@ public class Configuration : IPluginConfiguration {
 
     public bool IgnoreOldData { get; set; } = true;
 
+    public bool RefreshWithAlt { get; set; } = true;
+
     // the below exist just to make saving less cumbersome
 
     [NonSerialized] private DalamudPluginInterface pluginInterface = null!;

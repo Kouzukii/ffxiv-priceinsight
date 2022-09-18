@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using FFXIVClientStructs.FFXIV.Client.System.Memory;
@@ -38,7 +39,9 @@ public class ItemPriceTooltip : IDisposable {
             UpdateItemTooltip(itemTooltip, new List<Payload>());
             return;
         }
-        var (marketBoardData, isMarketable) = plugin.ItemPriceLookup.Get((uint)(plugin.GameGui.HoveredItem % 500000));
+
+        var refresh = plugin.Configuration.RefreshWithAlt && plugin.KeyState[VirtualKey.MENU];
+        var (marketBoardData, isMarketable) = plugin.ItemPriceLookup.Get((uint)(plugin.GameGui.HoveredItem % 500000), refresh);
         var payloads = isMarketable ? ParseMbData(plugin.GameGui.HoveredItem >= 500000, marketBoardData) : new List<Payload>();
 
         UpdateItemTooltip(itemTooltip, payloads);
@@ -107,7 +110,7 @@ public class ItemPriceTooltip : IDisposable {
         if (marketBoardData == null) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.LevelSync));
-            payloads.Add(new TextPayload(" Marketboard info is being obtained..\n        Tap Ctrl to refresh."));
+            payloads.Add(new TextPayload(" Marketboard info is being obtained.."));
             payloads.Add(new UIForegroundPayload(0));
         } else {
             var mb = marketBoardData.Value;
@@ -146,7 +149,7 @@ public class ItemPriceTooltip : IDisposable {
                 var recentTime = hq ? mb.MinimumPriceHQ?.Time : mb.MinimumPriceNQ?.Time;
                 if (recentTime != null) {
                     payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))} ago)"));
+                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
                     payloads.Add(new UIForegroundPayload(0));
                 }
             }
@@ -176,7 +179,7 @@ public class ItemPriceTooltip : IDisposable {
                 var recentTime = hq ? mb.OwnMinimumPriceHQ?.Time : mb.OwnMinimumPriceNQ?.Time;
                 if (recentTime != null) {
                     payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))} ago)"));
+                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
                     payloads.Add(new UIForegroundPayload(0));
                 }
             }
@@ -212,7 +215,7 @@ public class ItemPriceTooltip : IDisposable {
                 var recentTime = hq ? mb.MostRecentPurchaseHQ?.Time : mb.MostRecentPurchaseNQ?.Time;
                 if (recentTime != null) {
                     payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))} ago)"));
+                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
                     payloads.Add(new UIForegroundPayload(0));
                 }
             }
@@ -246,7 +249,7 @@ public class ItemPriceTooltip : IDisposable {
                 var recentTime = hq ? mb.OwnMostRecentPurchaseHQ?.Time : mb.OwnMostRecentPurchaseNQ?.Time;
                 if (recentTime != null) {
                     payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))} ago)"));
+                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
                     payloads.Add(new UIForegroundPayload(0));
                 }
             }
@@ -296,12 +299,12 @@ public class ItemPriceTooltip : IDisposable {
 
     private static string PrintDuration(TimeSpan span) {
         if (span.Days > 0)
-            return $"{span.Days}d";
+            return $"{span.Days}d ago";
         if (span.Hours > 0)
-            return $"{span.Hours}h";
+            return $"{span.Hours}h ago";
         if (span.Minutes > 0)
-            return $"{span.Minutes}min";
-        return "few sec";
+            return $"{span.Minutes}m ago";
+        return "just now";
     }
 
     public void Dispose() {

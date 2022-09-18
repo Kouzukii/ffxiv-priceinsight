@@ -29,16 +29,19 @@ public class ItemPriceLookup : IDisposable {
         }
     }
 
-    public (MarketBoardData? MarketBoardData, bool IsMarketable) Get(uint itemId) {
-        var key = itemId.ToString();
-        var item = (Task<MarketBoardData?>?)cache[key];
-        if (item != null && !(item.IsCanceled || item.IsFaulted) && (!item.IsCompleted || item.Result != null))
-            return (item.IsCompleted ? item.Result : null, true);
+    public (MarketBoardData? MarketBoardData, bool IsMarketable) Get(uint itemId, bool refresh) {
+        if (!refresh) {
+            var key = itemId.ToString();
+            var item = (Task<MarketBoardData?>?)cache[key];
+            if (item != null && !(item.IsCanceled || item.IsFaulted) && (!item.IsCompleted || item.Result != null))
+                return (item.IsCompleted ? item.Result : null, true);
+        }
+
         var itemData = plugin.DataManager.Excel.GetSheet<Item>()?.GetRow(itemId);
         if (itemData != null && itemData.ItemSearchCategory.Row == 0)
             return (null, false);
         // Don't spam universalis with requests
-        if ((lastRequest - DateTime.Now).TotalMilliseconds < 500) {
+        if ((DateTime.Now - lastRequest).TotalMilliseconds < 500) {
             lock (requestedItems) {
                 if (requestedItems.Add(itemId) && requestedItems.Count == 1)
                     Task.Run(BufferFetch);
