@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
+using Dalamud.Interface;
 using FFXIVClientStructs.FFXIV.Client.System.Memory;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
@@ -13,6 +14,7 @@ public class ItemPriceTooltip : IDisposable {
     private const int NodeId = 32612;
     private const char HQIcon = '';
     private const char GilIcon = '';
+    private const uint TooltipMovedUp = 0x80000000;
 
     public ItemPriceTooltip(PriceInsightPlugin plugin) {
         this.plugin = plugin;
@@ -28,7 +30,10 @@ public class ItemPriceTooltip : IDisposable {
                 return;
             itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height - n->Height - 4));
             itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-            itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y + n->Height));
+            if ((n->Flags_2 & TooltipMovedUp) == TooltipMovedUp) {
+                itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y + n->Height));
+                n->Flags_2 &= ~TooltipMovedUp;
+            }
             insertNode->SetPositionFloat(insertNode->X, insertNode->Y - n->Height - 4);
             break;
         }
@@ -101,7 +106,10 @@ public class ItemPriceTooltip : IDisposable {
         priceNode->AtkResNode.SetPositionFloat(17, itemTooltip->WindowNode->AtkResNode.Height - 8f);
         itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
         itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-        itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y - priceNode->AtkResNode.Height));
+        if (ImGuiHelpers.MainViewport.Size.Y - itemTooltip->Y - itemTooltip->WindowNode->AtkResNode.Height < 36) {
+            itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y - priceNode->AtkResNode.Height));
+            priceNode->AtkResNode.Flags_2 |= TooltipMovedUp;
+        }
         insertNode->SetPositionFloat(insertNode->X, insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
