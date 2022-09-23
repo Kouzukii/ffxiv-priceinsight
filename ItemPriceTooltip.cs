@@ -4,6 +4,7 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
+using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.System.Memory;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
@@ -269,13 +270,20 @@ public class ItemPriceTooltip : IDisposable {
     public void Refresh(IDictionary<uint,MarketBoardData> mbData) {
         if (plugin.GameGui.HoveredItem >= 2000000) return;
         if (mbData.TryGetValue((uint)(plugin.GameGui.HoveredItem % 500000), out var data)) {
-            var tooltip = plugin.GameGui.GetAddonByName("ItemDetail", 1);
-            if (tooltip == IntPtr.Zero) return;
             var newText = ParseMbData(plugin.GameGui.HoveredItem >= 500000, data);
-            unsafe {
-                RestoreToNormal((AtkUnitBase*)tooltip);
-                UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
-            }
+            plugin.Framework.RunOnFrameworkThread(() => {
+                try {
+                    var tooltip = plugin.GameGui.GetAddonByName("ItemDetail", 1);
+                    unsafe {
+                        if (tooltip == IntPtr.Zero || !((AtkUnitBase*)tooltip)->IsVisible)
+                            return;
+                        RestoreToNormal((AtkUnitBase*)tooltip);
+                        UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
+                    }
+                } catch (Exception e) {
+                    PluginLog.Error(e, "Failed to update tooltip");
+                }
+            });
         }
     }
 
