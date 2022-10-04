@@ -70,6 +70,8 @@ public class PriceInsightPlugin : IDalamudPlugin {
     }
 
     private void FrameworkOnUpdate(Framework framework) {
+        if (ItemPriceLookup.NeedsClearing)
+            ClearCache();
         if (Service.ClientState.LocalContentId == 0 || !ItemPriceLookup.IsReady)
             return;
         try {

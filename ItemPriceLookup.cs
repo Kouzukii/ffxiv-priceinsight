@@ -23,12 +23,22 @@ public class ItemPriceLookup : IDisposable {
     public bool IsReady {
         get {
             if (plugin.Configuration.UseCurrentWorld) {
-                homeWorld = Service.ClientState.LocalPlayer?.CurrentWorld.GameData;
+                homeWorld ??= Service.ClientState.LocalPlayer?.CurrentWorld.GameData;
             } else {
                 homeWorld ??= Service.ClientState.LocalPlayer?.HomeWorld.GameData;
             }
 
             return homeWorld != null;
+        }
+    }
+
+    public bool NeedsClearing {
+        get {
+            if (plugin.Configuration.UseCurrentWorld && homeWorld != null) {
+                return Service.ClientState.LocalPlayer?.CurrentWorld.Id != homeWorld.RowId;
+            }
+
+            return false;
         }
     }
 
@@ -110,7 +120,11 @@ public class ItemPriceLookup : IDisposable {
             return null;
         }
 
-        return homeWorld?.DataCenter?.Value?.Name.RawString;
+        if (plugin.Configuration.ShowDatacenter || plugin.Configuration.ShowMostRecentPurchase) {
+            return homeWorld?.DataCenter?.Value?.Name.RawString;
+        }
+
+        return homeWorld?.Name.RawString;
     }
 
     public void Dispose() {

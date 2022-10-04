@@ -22,7 +22,7 @@ public readonly struct MarketBoardData {
 
 public readonly struct Listing {
     public long Price { get; init; }
-    public string World { get; init; }
-    public string Datacenter { get; init; }
+    public string? World { get; init; }
+    public string? Datacenter { get; init; }
     public DateTime Time { get; init; }
 }
