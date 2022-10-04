@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using Dalamud.Data;
 using Dalamud.Game;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -15,24 +11,15 @@ namespace PriceInsight;
 public class PriceInsightPlugin : IDalamudPlugin {
     public string Name => "PriceInsight";
 
-    internal CommandManager CommandManager { get; }
-    internal ClientState ClientState { get; }
-    internal DataManager DataManager { get; }
-    internal SigScanner SigScanner { get; }
-    internal Framework Framework { get; }
-    internal GameGui GameGui { get; }
-    internal KeyState KeyState { get; }
-
     public Configuration Configuration { get; }
     public ItemPriceTooltip ItemPriceTooltip { get; }
     public Hooks Hooks { get; }
     public ItemPriceLookup ItemPriceLookup { get; private set; }
     public UniversalisClient UniversalisClient { get; }
 
-    private readonly ConfigUI ui;
+    private readonly ConfigUI configUi;
 
     private readonly Dictionary<InventoryType, DateTime> inventoriesToScan = new() {
-        { InventoryType.EquippedItems, DateTime.UnixEpoch },
         { InventoryType.Inventory1, DateTime.UnixEpoch },
         { InventoryType.Inventory2, DateTime.UnixEpoch },
         { InventoryType.Inventory3, DateTime.UnixEpoch },
@@ -50,15 +37,8 @@ public class PriceInsightPlugin : IDalamudPlugin {
         { InventoryType.RetainerPage7, DateTime.UnixEpoch },
     };
 
-    public PriceInsightPlugin(DalamudPluginInterface pluginInterface, CommandManager commandManager, ClientState clientState, DataManager dataManager,
-        SigScanner sigScanner, Framework framework, GameGui gameGui, KeyState keyState) {
-        CommandManager = commandManager;
-        ClientState = clientState;
-        DataManager = dataManager;
-        SigScanner = sigScanner;
-        Framework = framework;
-        GameGui = gameGui;
-        KeyState = keyState;
+    public PriceInsightPlugin(DalamudPluginInterface pluginInterface) {
+        Service.Initialize(pluginInterface);
 
         Configuration = Configuration.Get(pluginInterface);
 
@@ -66,25 +46,31 @@ public class PriceInsightPlugin : IDalamudPlugin {
         ItemPriceLookup = new ItemPriceLookup(this);
         ItemPriceTooltip = new ItemPriceTooltip(this);
         Hooks = new Hooks(this);
+        configUi = new ConfigUI(this);
 
-        ui = new ConfigUI(Configuration);
+        Service.CommandManager.AddHandler("/priceinsight", new CommandInfo((_, _) => OpenConfigUI()) { HelpMessage = "Price Insight Configuration Menu" });
 
-        CommandManager.AddHandler("/priceinsight", new CommandInfo((_, _) => OpenConfigUI()) { HelpMessage = "Price Insight Configuration Menu" });
-
-        pluginInterface.UiBuilder.Draw += () => ui.Draw();
+        pluginInterface.UiBuilder.Draw += () => configUi.Draw();
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfigUI;
-        framework.Update += FrameworkOnUpdate;
-        clientState.Logout += ClientStateOnLogout;
+        Service.Framework.Update += FrameworkOnUpdate;
+        Service.ClientState.Logout += ClientStateOnLogout;
     }
 
     private void ClientStateOnLogout(object? sender, EventArgs e) {
+        ClearCache();
+    }
+
+    public void ClearCache() {
+        foreach (var key in inventoriesToScan.Keys) {
+            inventoriesToScan[key] = DateTime.UnixEpoch;
+        }
         var ipl = ItemPriceLookup;
-        ItemPriceLookup = new ItemPriceLookup(this); // reset all cached prices when logging out
+        ItemPriceLookup = new ItemPriceLookup(this);
         ipl.Dispose();
     }
 
     private void FrameworkOnUpdate(Framework framework) {
-        if (ClientState.LocalContentId == 0 || !ItemPriceLookup.IsReady)
+        if (Service.ClientState.LocalContentId == 0 || !ItemPriceLookup.IsReady)
             return;
         try {
             unsafe {
@@ -136,17 +122,17 @@ public class PriceInsightPlugin : IDalamudPlugin {
     }
 
     private void OpenConfigUI() {
-        ui.SettingsVisible = true;
+        configUi.SettingsVisible = true;
     }
 
     public void Dispose() {
-        Framework.Update -= FrameworkOnUpdate;
-        ClientState.Logout -= ClientStateOnLogout;
+        Service.CommandManager.RemoveHandler("/priceinsight");
+        Service.Framework.Update -= FrameworkOnUpdate;
+        Service.ClientState.Logout -= ClientStateOnLogout;
         Hooks.Dispose();
         ItemPriceTooltip.Dispose();
         ItemPriceLookup.Dispose();
         UniversalisClient.Dispose();
-        ui.Dispose();
-        CommandManager.RemoveHandler("/priceinsight");
+        configUi.Dispose();
     }
 }

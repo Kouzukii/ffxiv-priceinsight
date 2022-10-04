@@ -8,14 +8,20 @@ namespace PriceInsight;
 public class Configuration : IPluginConfiguration {
     public int Version { get; set; } = 0;
 
+    public bool ShowRegion { get; set; } = false;
+    
     public bool ShowDatacenter { get; set; } = true;
 
     public bool ShowWorld { get; set; } = true;
 
     public bool ShowMostRecentPurchase { get; set; } = false;
 
+    public bool ShowMostRecentPurchaseRegion { get; set; } = false;
+    
     public bool ShowMostRecentPurchaseWorld { get; set; } = true;
 
+    public bool UseCurrentWorld { get; set; } = false;
+    
     public bool IgnoreOldData { get; set; } = true;
 
     public bool RefreshWithAlt { get; set; } = true;

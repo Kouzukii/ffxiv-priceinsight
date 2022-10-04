@@ -1,11 +1,10 @@
 ﻿using System;
-using Dalamud.Interface;
 using ImGuiNET;
 
 namespace PriceInsight; 
 
 class ConfigUI : IDisposable {
-    private readonly Configuration configuration;
+    private readonly PriceInsightPlugin plugin;
 
     private bool settingsVisible = false;
 
@@ -14,8 +13,8 @@ class ConfigUI : IDisposable {
         set => settingsVisible = value;
     }
 
-    public ConfigUI(Configuration configuration) {
-        this.configuration = configuration;
+    public ConfigUI(PriceInsightPlugin plugin) {
+        this.plugin = plugin;
     }
 
     public void Dispose() {
@@ -26,45 +25,103 @@ class ConfigUI : IDisposable {
             return;
         }
 
+        var conf = plugin.Configuration;
         if (ImGui.Begin("Price Insight Config", ref settingsVisible,
                 ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.AlwaysAutoResize)) {
-            var configValue = configuration.RefreshWithAlt;
+            var configValue = conf.RefreshWithAlt;
             if (ImGui.Checkbox("Tap Alt to refresh prices", ref configValue)) {
-                configuration.RefreshWithAlt = configValue;
-                configuration.Save();
+                conf.RefreshWithAlt = configValue;
+                conf.Save();
             }
             
-            configValue = configuration.ShowDatacenter;
-            if (ImGui.Checkbox("Show datacenter price info", ref configValue)) {
-                configuration.ShowDatacenter = configValue;
-                configuration.Save();
+            configValue = conf.UseCurrentWorld;
+            if (ImGui.Checkbox("Use current world as home world", ref configValue)) {
+                conf.UseCurrentWorld = configValue;
+                conf.Save();
+                plugin.ClearCache();
+            }
+            TooltipUseCurrentWorld();
+            
+            ImGui.Separator();
+            ImGui.PushID(0);
+            
+            ImGui.Text("Show cheapest price in:");
+            
+            configValue = conf.ShowRegion;
+            if (ImGui.Checkbox("Region", ref configValue)) {
+                conf.ShowRegion = configValue;
+                conf.Save();
+                plugin.ClearCache();
+            }
+            TooltipRegion();
+
+            configValue = conf.ShowDatacenter;
+            if (ImGui.Checkbox("Datacenter", ref configValue)) {
+                conf.ShowDatacenter = configValue;
+                conf.Save();
+                plugin.ClearCache();
             }
 
-            configValue = configuration.ShowWorld;
-            if (ImGui.Checkbox("Show home world price info", ref configValue)) {
-                configuration.ShowWorld = configValue;
-                configuration.Save();
+            configValue = conf.ShowWorld;
+            if (ImGui.Checkbox("Home world", ref configValue)) {
+                conf.ShowWorld = configValue;
+                conf.Save();
+            }
+            
+            ImGui.PopID();
+            ImGui.Separator();
+            ImGui.PushID(1);
+            
+            ImGui.Text("Show most recent purchase in:");
+
+            configValue = conf.ShowMostRecentPurchaseRegion;
+            if (ImGui.Checkbox("Region", ref configValue)) {
+                conf.ShowMostRecentPurchaseRegion = configValue;
+                conf.Save();
+                plugin.ClearCache();
+            }
+            TooltipRegion();
+
+            configValue = conf.ShowMostRecentPurchase;
+            if (ImGui.Checkbox("Datacenter", ref configValue)) {
+                conf.ShowMostRecentPurchase = configValue;
+                conf.Save();
+                plugin.ClearCache();
             }
 
-            configValue = configuration.ShowMostRecentPurchase;
-            if (ImGui.Checkbox("Show most recent purchase", ref configValue)) {
-                configuration.ShowMostRecentPurchase = configValue;
-                configuration.Save();
+            configValue = conf.ShowMostRecentPurchaseWorld;
+            if (ImGui.Checkbox("Home world", ref configValue)) {
+                conf.ShowMostRecentPurchaseWorld = configValue;
+                conf.Save();
             }
+            
+            ImGui.PopID();
+            ImGui.Separator();
 
-            configValue = configuration.ShowMostRecentPurchaseWorld;
-            if (ImGui.Checkbox("Show most recent purchase on your home world", ref configValue)) {
-                configuration.ShowMostRecentPurchaseWorld = configValue;
-                configuration.Save();
-            }
-
-            configValue = configuration.IgnoreOldData;
+            configValue = conf.IgnoreOldData;
             if (ImGui.Checkbox("Ignore data older than 1 month", ref configValue)) {
-                configuration.IgnoreOldData = configValue;
-                configuration.Save();
+                conf.IgnoreOldData = configValue;
+                conf.Save();
             }
         }
 
         ImGui.End();
+    }
+
+    private static void TooltipUseCurrentWorld() {
+        if (ImGui.IsItemHovered()) {
+            ImGui.BeginTooltip();
+            ImGui.TextUnformatted(
+                "The current world you're on will be considered your \"home world\".\nUseful if you're datacenter travelling and want to see prices there.");
+            ImGui.EndTooltip();
+        }
+    }
+
+    private static void TooltipRegion() {
+        if (ImGui.IsItemHovered()) {
+            ImGui.BeginTooltip();
+            ImGui.TextUnformatted("Include all datacenters available via datacenter traveling.");
+            ImGui.EndTooltip();
+        }
     }
 }

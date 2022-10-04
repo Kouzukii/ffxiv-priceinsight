@@ -6,7 +6,6 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace PriceInsight; 
 
-// Taken mostly from https://github.com/Caraxi/SimpleTweaksPlugin under the terms of AGPL3
 public class Hooks : IDisposable {
     private readonly PriceInsightPlugin plugin;
         

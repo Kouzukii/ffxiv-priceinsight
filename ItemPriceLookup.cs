@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Threading.Tasks;
-using Dalamud.Game.ClientState.Resolvers;
 using Dalamud.Logging;
 using Lumina.Excel.GeneratedSheets;
 
@@ -12,10 +11,10 @@ namespace PriceInsight;
 public class ItemPriceLookup : IDisposable {
     private readonly PriceInsightPlugin plugin;
     private readonly MemoryCache cache = new("itemDb");
-    private ExcelResolver<World>? world;
-    private string? datacenter;
+    private World? homeWorld;
     private readonly HashSet<uint> requestedItems = new();
     private DateTime lastRequest = DateTime.UnixEpoch;
+    private readonly Dictionary<byte, string> regions = new() { { 1, "Japan" }, { 2, "North-America" }, { 3, "Europe" }, { 4, "Oceania" } };
 
     public ItemPriceLookup(PriceInsightPlugin plugin) {
         this.plugin = plugin;
@@ -23,9 +22,13 @@ public class ItemPriceLookup : IDisposable {
 
     public bool IsReady {
         get {
-            world ??= plugin.ClientState.LocalPlayer?.HomeWorld;
-            datacenter ??= world?.GameData?.DataCenter.Value?.Name.RawString;
-            return world != null && datacenter != null;
+            if (plugin.Configuration.UseCurrentWorld) {
+                homeWorld = Service.ClientState.LocalPlayer?.CurrentWorld.GameData;
+            } else {
+                homeWorld ??= Service.ClientState.LocalPlayer?.HomeWorld.GameData;
+            }
+
+            return homeWorld != null;
         }
     }
 
@@ -37,7 +40,7 @@ public class ItemPriceLookup : IDisposable {
                 return (item.IsCompleted ? item.Result : null, true);
         }
 
-        var itemData = plugin.DataManager.Excel.GetSheet<Item>()?.GetRow(itemId);
+        var itemData = Service.DataManager.Excel.GetSheet<Item>()?.GetRow(itemId);
         if (itemData != null && itemData.ItemSearchCategory.Row == 0)
             return (null, false);
         // Don't spam universalis with requests
@@ -64,10 +67,10 @@ public class ItemPriceLookup : IDisposable {
     }
 
     public void Fetch(IEnumerable<uint> items, bool skipCheck) {
-        if (world == null || datacenter == null)
+        if (Scope() is not { } scope || homeWorld?.RowId is not { } homeWorldId)
             return;
 
-        var itemSheet = plugin.DataManager.Excel.GetSheet<Item>();
+        var itemSheet = Service.DataManager.Excel.GetSheet<Item>();
         var itemIds = skipCheck
             ? items.ToList()
             : (from id in items
@@ -82,15 +85,11 @@ public class ItemPriceLookup : IDisposable {
 
         var itemTask = Task.Run(async () => {
             try {
-#if DEBUG
                 var fetchStart = DateTime.Now;
-#endif
-                var result = await plugin.UniversalisClient.GetMarketBoardDataList(datacenter, world.Id, itemIds);
+                var result = await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds);
                 if (result != null)
                     plugin.ItemPriceTooltip.Refresh(result);
-#if DEBUG
-                PluginLog.Information($"Fetching {itemIds.Count} items took {(DateTime.Now - fetchStart).TotalMilliseconds:F0}ms");
-#endif
+                PluginLog.Debug($"Fetching {itemIds.Count} items took {(DateTime.Now - fetchStart).TotalMilliseconds:F0}ms");
                 return result;
             } catch (Exception e) {
                 PluginLog.Warning(e, $"Error while fetching {itemIds.Count} items");
@@ -102,6 +101,16 @@ public class ItemPriceLookup : IDisposable {
             cache.Set(id.ToString(), itemTask.ContinueWith(task => task.Result?.GetValueOrDefault(id), TaskContinuationOptions.OnlyOnRanToCompletion),
                 DateTimeOffset.Now.AddMinutes(90));
         }
+    }
+
+    private string? Scope() {
+        if (plugin.Configuration.ShowRegion || plugin.Configuration.ShowMostRecentPurchaseRegion) {
+            if (homeWorld?.DataCenter?.Value?.Region is { } region)
+                return regions[region];
+            return null;
+        }
+
+        return homeWorld?.DataCenter?.Value?.Name.RawString;
     }
 
     public void Dispose() {
