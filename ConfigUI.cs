@@ -128,7 +128,7 @@ class ConfigUI : IDisposable {
         if (ImGui.IsItemHovered()) {
             ImGui.BeginTooltip();
             ImGui.TextUnformatted(
-                "Prefetch prices for all items in inventory, chocobo saddlebag and retainer.\nWARNING: Causes high network load with the \"Region\" setting enabled.");
+                "Prefetch prices for all items in inventory, chocobo saddlebag and retainer when logging in.\nWARNING: Causes high network load with the \"Region\" setting enabled.");
             ImGui.EndTooltip();
         }
     }
