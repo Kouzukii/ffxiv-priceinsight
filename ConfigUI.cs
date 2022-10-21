@@ -34,6 +34,13 @@ class ConfigUI : IDisposable {
                 conf.Save();
             }
             
+            configValue = conf.PrefetchInventory;
+            if (ImGui.Checkbox("Prefetch prices for items in inventory", ref configValue)) {
+                conf.PrefetchInventory = configValue;
+                conf.Save();
+            }
+            TooltipPrefetchInventory();
+
             configValue = conf.UseCurrentWorld;
             if (ImGui.Checkbox("Use current world as home world", ref configValue)) {
                 conf.UseCurrentWorld = configValue;
@@ -113,6 +120,15 @@ class ConfigUI : IDisposable {
             ImGui.BeginTooltip();
             ImGui.TextUnformatted(
                 "The current world you're on will be considered your \"home world\".\nUseful if you're datacenter travelling and want to see prices there.");
+            ImGui.EndTooltip();
+        }
+    }
+
+    private static void TooltipPrefetchInventory() {
+        if (ImGui.IsItemHovered()) {
+            ImGui.BeginTooltip();
+            ImGui.TextUnformatted(
+                "Prefetch prices for all items in inventory, chocobo saddlebag and retainer.\nWARNING: Causes high network load with the \"Region\" setting enabled.");
             ImGui.EndTooltip();
         }
     }

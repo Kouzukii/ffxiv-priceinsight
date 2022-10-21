@@ -74,6 +74,8 @@ public class PriceInsightPlugin : IDalamudPlugin {
             ClearCache();
         if (Service.ClientState.LocalContentId == 0 || !ItemPriceLookup.IsReady)
             return;
+        if(!Configuration.PrefetchInventory) 
+            return;
         try {
             unsafe {
                 var manager = InventoryManager.Instance();
@@ -96,9 +98,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
                         items.Add(itemId % 500000);
 
                         if (items.Count >= 50) {
-#if !DEBUG // Don't spam universalis while debugging
                             ItemPriceLookup.Fetch(items, false);
-#endif
                             items.Clear();
                         }
                     }
@@ -113,9 +113,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
                 }
 
                 if (items.Count > 0) {
-#if !DEBUG // Don't spam universalis while debugging
                     ItemPriceLookup.Fetch(items, false);
-#endif
                 }
             }
         } catch (Exception e) {
