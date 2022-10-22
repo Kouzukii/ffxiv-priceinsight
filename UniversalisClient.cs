@@ -12,7 +12,10 @@ using Newtonsoft.Json.Converters;
 namespace PriceInsight;
 
 public class UniversalisClient : IDisposable {
-    private readonly HttpClient httpClient = new() { Timeout = TimeSpan.FromMilliseconds(60000) };
+    private readonly HttpClient httpClient =
+        new(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All }) {
+            Timeout = TimeSpan.FromMilliseconds(60000)
+        };
 
     internal static readonly Dictionary<uint, uint> WorldToDc = Service.DataManager.GetExcelSheet<World>()!.Where(w => w.IsPublic)
         .ToDictionary(w => w.RowId, w => w.DataCenter.Row);
