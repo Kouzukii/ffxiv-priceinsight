@@ -1,54 +1,33 @@
 using System;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace PriceInsight;
 
-public class UnixMilliDateTimeConverter : DateTimeConverterBase {
-    public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
-        long milliseconds;
+public class UnixMilliDateTimeConverter : JsonConverter<DateTime> {
+    public override bool HandleNull => false;
 
-        if (value is DateTime dateTime) {
-            milliseconds = (long)(dateTime.ToUniversalTime() - DateTime.UnixEpoch).TotalMilliseconds;
-        }
-        else {
-            throw new JsonSerializationException("Expected date object value.");
+    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
+        if (reader.TryGetInt64(out var time)) {
+            return DateTimeOffset.FromUnixTimeMilliseconds(time).LocalDateTime;
         }
 
-        if (milliseconds < 0) {
-            throw new JsonSerializationException("Cannot convert date value that is before Unix epoch of 00:00:00 UTC on 1 January 1970.");
-        }
-
-        writer.WriteValue(milliseconds);
+        throw new JsonException("Expected date object value.");
     }
 
-    public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
-        if (reader.TokenType == JsonToken.Null) {
-            return null;
+    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options) => throw new NotSupportedException();
+}
+
+public class UnixSecondsDateTimeConverter : JsonConverter<DateTime> {
+    public override bool HandleNull => false;
+
+    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
+        if (reader.TryGetInt64(out var time)) {
+            return DateTimeOffset.FromUnixTimeSeconds(time).LocalDateTime;
         }
 
-        long millis;
-
-        switch (reader.TokenType) {
-            case JsonToken.Integer: 
-                millis = (long)reader.Value!;
-                break;
-            case JsonToken.String: {
-                if (!long.TryParse((string)reader.Value!, out millis)) {
-                    throw new JsonSerializationException($"Cannot convert invalid value to {objectType}.");
-                }
-
-                break;
-            }
-            default: 
-                throw new JsonSerializationException($"Unexpected token parsing date. Expected Integer or String, got {reader.TokenType}.");
-        }
-
-        if (millis < 0)
-            throw new JsonSerializationException($"Cannot convert value that is before Unix epoch of 00:00:00 UTC on 1 January 1970 to {objectType}.");
-        
-        var d = DateTime.UnixEpoch.AddMilliseconds(millis);
-        return d;
-
+        throw new JsonException("Expected date object value.");
     }
+
+    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options) => throw new NotSupportedException();
 }

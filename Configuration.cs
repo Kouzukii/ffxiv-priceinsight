@@ -25,7 +25,8 @@ public class Configuration : IPluginConfiguration {
     public bool IgnoreOldData { get; set; } = true;
 
     public bool RefreshWithAlt { get; set; } = true;
-    public bool PrefetchInventory { get; set; } = false;
+
+    public bool PrefetchInventory { get; set; } = true;
 
     // the below exist just to make saving less cumbersome
 
