@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup Label="Target">
 		<PlatformTarget>x64</PlatformTarget>
-		<TargetFramework>net6.0-windows</TargetFramework>
+		<TargetFramework>net7.0-windows</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<Platforms>x64</Platforms>
 		<Configurations>Debug;Release</Configurations>
@@ -11,7 +11,7 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>PriceInsight</AssemblyName>
-		<Version>2.3.2.0</Version>
+		<Version>2.3.3.0</Version>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->
@@ -70,10 +70,10 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.8" />
+		<PackageReference Include="DalamudPackager" Version="2.1.10" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="System.Runtime.Caching" Version="6.0.0" />
+		<PackageReference Include="System.Runtime.Caching" Version="7.0.0" />
 	</ItemGroup>
 	
 	<ItemGroup>
