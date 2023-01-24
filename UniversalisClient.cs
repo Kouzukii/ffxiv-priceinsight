@@ -51,10 +51,9 @@ public sealed class UniversalisClient : IDisposable {
     public async Task<Dictionary<uint, MarketBoardData>?> GetMarketBoardDataList(string scope, uint homeWorldId, List<uint> itemId) {
         // when only 1 item is queried, Universalis doesn't respond with an array
         if (itemId.Count == 1) {
-            var dict = new Dictionary<uint, MarketBoardData>();
             if (await GetMarketBoardData(scope, homeWorldId, itemId[0]) is { } data)
-                dict.Add(itemId[0], data);
-            return dict;
+                return new Dictionary<uint, MarketBoardData> {{ itemId[0], data }};
+            return null;
         }
 
         try {

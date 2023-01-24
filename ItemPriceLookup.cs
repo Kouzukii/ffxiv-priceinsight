@@ -42,17 +42,20 @@ public class ItemPriceLookup : IDisposable {
         }
     }
 
-    public (MarketBoardData? MarketBoardData, bool IsMarketable) Get(uint itemId, bool refresh) {
+    public (MarketBoardData? MarketBoardData, LookupState State) Get(uint itemId, bool refresh) {
         if (!refresh) {
             var key = itemId.ToString();
             var item = (Task<MarketBoardData?>?)cache[key];
-            if (item != null && !(item.IsCanceled || item.IsFaulted) && (!item.IsCompleted || item.Result != null))
-                return (item.IsCompleted ? item.Result : null, true);
+            if (item != null && (!item.IsCompleted || item.Result != null))
+                return (
+                    item.IsCompleted ? item.Result : null, 
+                    item is { IsCompleted: true, Result: null } ? LookupState.Faulted : LookupState.Marketable
+                );
         }
 
         var itemData = Service.DataManager.Excel.GetSheet<Item>()?.GetRow(itemId);
         if (itemData != null && itemData.ItemSearchCategory.Row == 0)
-            return (null, false);
+            return (null, LookupState.NonMarketable);
         // Don't spam universalis with requests
         if ((DateTime.Now - lastRequest).TotalMilliseconds < 500) {
             lock (requestedItems) {
@@ -65,7 +68,7 @@ public class ItemPriceLookup : IDisposable {
 
         lastRequest = DateTime.Now;
 
-        return (null, true);
+        return (null, LookupState.Marketable);
     }
 
     private async void BufferFetch() {
@@ -85,7 +88,7 @@ public class ItemPriceLookup : IDisposable {
             ? items.ToList()
             : (from id in items
                 let item = (Task<MarketBoardData?>?)cache[id.ToString()]
-                where item == null || item.IsCanceled || item.IsFaulted || (item.IsCompleted && item.Result == null)
+                where item is null or { IsCompleted: true, Result: null }
                 let itemData = itemSheet?.GetRow(id)
                 where itemData != null && itemData.ItemSearchCategory.Row != 0
                 select id).ToList();
@@ -94,17 +97,14 @@ public class ItemPriceLookup : IDisposable {
             return;
 
         var itemTask = Task.Run(async () => {
-            try {
-                var fetchStart = DateTime.Now;
-                var result = await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds);
-                if (result != null)
-                    plugin.ItemPriceTooltip.Refresh(result);
-                PluginLog.Debug($"Fetching {itemIds.Count} items took {(DateTime.Now - fetchStart).TotalMilliseconds:F0}ms");
-                return result;
-            } catch (Exception e) {
-                PluginLog.Warning(e, $"Error while fetching {itemIds.Count} items");
-                throw;
-            }
+            var fetchStart = DateTime.Now;
+            var result = await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds);
+            if (result != null)
+                plugin.ItemPriceTooltip.Refresh(result);
+            else 
+                plugin.ItemPriceTooltip.FetchFailed(itemIds);
+            PluginLog.Debug($"Fetching {itemIds.Count} items took {(DateTime.Now - fetchStart).TotalMilliseconds:F0}ms");
+            return result;
         });
 
         foreach (var id in itemIds) {

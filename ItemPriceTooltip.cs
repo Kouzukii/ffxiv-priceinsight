@@ -47,8 +47,8 @@ public class ItemPriceTooltip : IDisposable {
         }
 
         var refresh = plugin.Configuration.RefreshWithAlt && Service.KeyState[VirtualKey.MENU];
-        var (marketBoardData, isMarketable) = plugin.ItemPriceLookup.Get((uint)(Service.GameGui.HoveredItem % 500000), refresh);
-        var payloads = isMarketable ? ParseMbData(Service.GameGui.HoveredItem >= 500000, marketBoardData) : new List<Payload>();
+        var (marketBoardData, lookupState) = plugin.ItemPriceLookup.Get((uint)(Service.GameGui.HoveredItem % 500000), refresh);
+        var payloads = ParseMbData(Service.GameGui.HoveredItem >= 500000, marketBoardData, lookupState);
 
         UpdateItemTooltip(itemTooltip, payloads);
     }
@@ -114,9 +114,16 @@ public class ItemPriceTooltip : IDisposable {
         insertNode->SetPositionFloat(insertNode->X, insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
-    private List<Payload> ParseMbData(bool hq, MarketBoardData? marketBoardData) {
+    private List<Payload> ParseMbData(bool hq, MarketBoardData? marketBoardData, LookupState lookupState) {
         var payloads = new List<Payload>();
-        if (marketBoardData == null) {
+        if (lookupState == LookupState.NonMarketable)
+            return payloads;
+        if (lookupState == LookupState.Faulted) {
+            payloads.Add(new UIForegroundPayload(20));
+            payloads.Add(new IconPayload(BitmapFontIcon.Warning));
+            payloads.Add(new TextPayload(" Failed to obtain marketboard info.\n        This is likely an issue with Universalis.\n        Press alt to retry or check the /xllog."));
+            payloads.Add(new UIForegroundPayload(0));
+        } else if (marketBoardData == null) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.LevelSync));
             payloads.Add(new TextPayload(" Marketboard info is being obtained.."));
@@ -345,15 +352,15 @@ public class ItemPriceTooltip : IDisposable {
         return payloads;
     }
 
-    public void Refresh(IDictionary<uint,MarketBoardData> mbData) {
+    public void Refresh(IDictionary<uint, MarketBoardData> mbData) {
         if (Service.GameGui.HoveredItem >= 2000000) return;
         if (mbData.TryGetValue((uint)(Service.GameGui.HoveredItem % 500000), out var data)) {
-            var newText = ParseMbData(Service.GameGui.HoveredItem >= 500000, data);
+            var newText = ParseMbData(Service.GameGui.HoveredItem >= 500000, data, LookupState.Marketable);
             Service.Framework.RunOnFrameworkThread(() => {
                 try {
-                    var tooltip = Service.GameGui.GetAddonByName("ItemDetail", 1);
+                    var tooltip = Service.GameGui.GetAddonByName("ItemDetail");
                     unsafe {
-                        if (tooltip == IntPtr.Zero || !((AtkUnitBase*)tooltip)->IsVisible)
+                        if (tooltip == nint.Zero || !((AtkUnitBase*)tooltip)->IsVisible)
                             return;
                         RestoreToNormal((AtkUnitBase*)tooltip);
                         UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
@@ -365,9 +372,27 @@ public class ItemPriceTooltip : IDisposable {
         }
     }
 
+    public void FetchFailed(IList<uint> items) {
+        if (!items.Contains((uint)Service.GameGui.HoveredItem % 500000)) return;
+        var newText = ParseMbData(false, null, LookupState.Faulted);
+        Service.Framework.RunOnFrameworkThread(() => {
+            try {
+                var tooltip = Service.GameGui.GetAddonByName("ItemDetail");
+                unsafe {
+                    if (tooltip == nint.Zero || !((AtkUnitBase*)tooltip)->IsVisible)
+                        return;
+                    RestoreToNormal((AtkUnitBase*)tooltip);
+                    UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
+                }
+            } catch (Exception e) {
+                PluginLog.Error(e, "Failed to update tooltip");
+            }
+        });
+    }
+
     private void Cleanup() {
         unsafe {
-            var atkUnitBase = (AtkUnitBase*)Service.GameGui.GetAddonByName("ItemDetail", 1);
+            var atkUnitBase = (AtkUnitBase*)Service.GameGui.GetAddonByName("ItemDetail");
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse -- wrong!
             if (atkUnitBase == null)
                 return;
