@@ -41,7 +41,7 @@ public class ItemPriceTooltip : IDisposable {
     }
 
     public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
-        if (Service.GameGui.HoveredItem >= 2000000) {
+        if (Service.GameGui.HoveredItem is >= 2000000 or >= 500000 and < 1000000) {
             UpdateItemTooltip(itemTooltip, new List<Payload>());
             return;
         }
