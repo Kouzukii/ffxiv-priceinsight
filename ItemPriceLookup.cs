@@ -46,7 +46,7 @@ public class ItemPriceLookup : IDisposable {
         if (!refresh) {
             var key = itemId.ToString();
             var item = (Task<MarketBoardData?>?)cache[key];
-            if (item != null && (!item.IsCompleted || item.Result != null))
+            if (item != null)
                 return (
                     item.IsCompleted ? item.Result : null, 
                     item is { IsCompleted: true, Result: null } ? LookupState.Faulted : LookupState.Marketable

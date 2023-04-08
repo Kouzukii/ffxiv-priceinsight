@@ -17,8 +17,8 @@ public sealed class UniversalisClient : IDisposable {
             Timeout = TimeSpan.FromMilliseconds(60000)
         };
 
-    private const string RequiredFields = "lastUploadTime,listings.pricePerUnit,listings.hq,listings.worldID,listings.lastReviewTime,recentHistory.pricePerUnit,recentHistory.hq,recentHistory.worldID,recentHistory.timestamp";
-    private const string RequiredFieldsMulti = "items.lastUploadTime,items.listings.pricePerUnit,items.listings.hq,items.listings.worldID,items.listings.lastReviewTime,items.recentHistory.pricePerUnit,items.recentHistory.hq,items.recentHistory.worldID,items.recentHistory.timestamp";
+    private const string RequiredFields = "lastUploadTime,listings.pricePerUnit,listings.hq,listings.worldID,listings.lastReviewTime,recentHistory.pricePerUnit,recentHistory.hq,recentHistory.worldID,recentHistory.timestamp,averagePriceNQ,averagePriceHQ,nqSaleVelocity,hqSaleVelocity,regionName,dcName,worldName";
+    private const string RequiredFieldsMulti = "items.lastUploadTime,items.listings.pricePerUnit,items.listings.hq,items.listings.worldID,items.listings.lastReviewTime,items.recentHistory.pricePerUnit,items.recentHistory.hq,items.recentHistory.worldID,items.recentHistory.timestamp,items.averagePriceNQ,items.averagePriceHQ,items.nqSaleVelocity,items.hqSaleVelocity,items.regionName,items.dcName,items.worldName";
 
     internal static readonly Dictionary<uint, (string Name, uint Dc, string DcName)> WorldLookup = Service.DataManager.GetExcelSheet<World>()!.Where(w => w.IsPublic)
         .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Row, w.DataCenter.Value!.Name.RawString));
@@ -100,7 +100,12 @@ public sealed class UniversalisClient : IDisposable {
             RegionMostRecentPurchaseNQ = item.recentHistory?.FirstOrDefault(l => !l.hq),
             RegionMostRecentPurchaseHQ = item.recentHistory?.FirstOrDefault(l => l.hq),
             HomeWorld = Service.DataManager.GetExcelSheet<World>()!.GetRow(worldId)!.Name,
-            HomeDatacenter = WorldLookup[worldId].DcName
+            HomeDatacenter = WorldLookup[worldId].DcName,
+            Scope = item.regionName ?? item.dcName ?? item.worldName ?? "World",
+            AverageSalePriceNQ = item.averagePriceNQ > 0 ? item.averagePriceNQ : null,
+            AverageSalePriceHQ = item.averagePriceHQ > 0 ? item.averagePriceHQ : null,
+            DailySaleVelocityNQ = item.nqSaleVelocity > 0 ? item.nqSaleVelocity : null,
+            DailySaleVelocityHQ = item.hqSaleVelocity > 0 ? item.hqSaleVelocity : null
         };
         return marketBoardData;
     }
@@ -117,6 +122,13 @@ class ItemData {
 
     public List<ListingData>? listings { get; set; }
     public List<RecentData>? recentHistory { get; set; }
+    public double averagePriceNQ { get; set; }
+    public double averagePriceHQ { get; set; }
+    public double nqSaleVelocity { get; set; }
+    public double hqSaleVelocity { get; set; }
+    public string? regionName { get; set; }
+    public string? dcName { get; set; }
+    public string? worldName { get; set; }
 
     public class ListingData {
         public long pricePerUnit { get; set; }

@@ -19,10 +19,12 @@ public class Configuration : IPluginConfiguration {
     public bool ShowMostRecentPurchaseRegion { get; set; } = false;
     
     public bool ShowMostRecentPurchaseWorld { get; set; } = true;
+    
+    public bool ShowDailySaleVelocity { get; set; } = false;
+    
+    public bool ShowAverageSalePrice { get; set; } = false;
 
     public bool UseCurrentWorld { get; set; } = false;
-    
-    public bool IgnoreOldData { get; set; } = true;
 
     public bool RefreshWithAlt { get; set; } = true;
 

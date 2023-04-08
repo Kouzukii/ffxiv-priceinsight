@@ -35,6 +35,7 @@ public class ItemPriceTooltip : IDisposable {
                 itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y + n->Height));
                 n->Flags_2 &= ~TooltipMovedUp;
             }
+
             insertNode->SetPositionFloat(insertNode->X, insertNode->Y - n->Height - 4);
             break;
         }
@@ -107,14 +108,15 @@ public class ItemPriceTooltip : IDisposable {
         priceNode->AtkResNode.SetPositionFloat(17, itemTooltip->WindowNode->AtkResNode.Height - 8f);
         itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
         itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-        if (ImGuiHelpers.MainViewport.Size.Y - itemTooltip->Y - itemTooltip->WindowNode->AtkResNode.Height < 36) {
+        if (ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - itemTooltip->WindowNode->AtkResNode.Height < 36) {
             itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y - priceNode->AtkResNode.Height));
             priceNode->AtkResNode.Flags_2 |= TooltipMovedUp;
         }
+
         insertNode->SetPositionFloat(insertNode->X, insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
-    private List<Payload> ParseMbData(bool hq, MarketBoardData? marketBoardData, LookupState lookupState) {
+    private List<Payload> ParseMbData(bool hq, MarketBoardData? mbData, LookupState lookupState) {
         var payloads = new List<Payload>();
         if (lookupState == LookupState.NonMarketable)
             return payloads;
@@ -123,229 +125,154 @@ public class ItemPriceTooltip : IDisposable {
             payloads.Add(new IconPayload(BitmapFontIcon.Warning));
             payloads.Add(new TextPayload(" Failed to obtain marketboard info.\n        This is likely an issue with Universalis.\n        Press alt to retry or check the /xllog."));
             payloads.Add(new UIForegroundPayload(0));
-        } else if (marketBoardData == null) {
+        } else if (mbData == null) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.LevelSync));
             payloads.Add(new TextPayload(" Marketboard info is being obtained.."));
             payloads.Add(new UIForegroundPayload(0));
         } else {
-            var mb = marketBoardData.Value;
-            if (plugin.Configuration.IgnoreOldData && DateTime.Now.Subtract(mb.LastUploadTime ?? DateTime.UnixEpoch).TotalDays > 29)
-                return payloads;
-            var ownWorld = mb.HomeWorld;
-            var ownDc = mb.HomeDatacenter;
-            var minWorld = hq ? mb.MinimumPriceHQ?.World ?? mb.MinimumPriceNQ?.World : mb.MinimumPriceNQ?.World ?? mb.MinimumPriceHQ?.World;
-            var minDc = hq ? mb.RegionMinimumPriceHQ?.Datacenter ?? mb.RegionMinimumPriceNQ?.Datacenter : mb.RegionMinimumPriceNQ?.Datacenter ?? mb.RegionMinimumPriceHQ?.Datacenter;
+            var ownWorld = mbData.HomeWorld;
+            var ownDc = mbData.HomeDatacenter;
+            var minWorld = hq 
+                ? mbData.MinimumPriceHQ?.World ?? mbData.MinimumPriceNQ?.World 
+                : mbData.MinimumPriceNQ?.World ?? mbData.MinimumPriceHQ?.World;
+            var minDc = hq
+                ? mbData.RegionMinimumPriceHQ?.Datacenter ?? mbData.RegionMinimumPriceNQ?.Datacenter
+                : mbData.RegionMinimumPriceNQ?.Datacenter ?? mbData.RegionMinimumPriceHQ?.Datacenter;
+            
             var priceHeader = false;
-
-            if (plugin.Configuration.ShowRegion && minDc != ownDc) {
+            void PriceHeader() {
+                if (priceHeader) return;
                 payloads.Add(new TextPayload("Marketboard Price:"));
                 priceHeader = true;
-                
-                var minWorldRegion = hq ? mb.RegionMinimumPriceHQ?.World ?? mb.RegionMinimumPriceNQ?.World : mb.RegionMinimumPriceNQ?.World ?? mb.RegionMinimumPriceHQ?.World;
+            }
+
+            void PrintNqHq<T>(T? nqPrice, T? hqPrice, string format = "N0", bool withGilIcon = true) where T : unmanaged, IFormattable {
+                if (nqPrice != null) {
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(506));
+                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null).Replace(" ", " ")}{(withGilIcon ? GilIcon : "")}"));
+                    if (!hq)
+                        payloads.Add(new UIForegroundPayload(0));
+                }
+                if (hqPrice != null) {
+                    if (nqPrice != null)
+                        payloads.Add(new TextPayload("/"));
+                    if (hq)
+                        payloads.Add(new UIForegroundPayload(506));
+                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null).Replace(" ", " ")}{(withGilIcon ? GilIcon : "")}"));
+                    if (hq)
+                        payloads.Add(new UIForegroundPayload(0));
+                }
+            }
+
+            void PrintTime(DateTime? time) {
+                if (time == null) return;
+                payloads.Add(new UIForegroundPayload(20));
+                payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(time.Value))})"));
+                payloads.Add(new UIForegroundPayload(0));
+            }
+
+            if (plugin.Configuration.ShowRegion && minDc != ownDc) {
+                PriceHeader();
+
+                var minWorldRegion = hq 
+                    ? mbData.RegionMinimumPriceHQ?.World ?? mbData.RegionMinimumPriceNQ?.World 
+                    : mbData.RegionMinimumPriceNQ?.World ?? mbData.RegionMinimumPriceHQ?.World;
 
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{minWorldRegion} {minDc}): "));
-                if (mb.RegionMinimumPriceNQ != null) {
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{mb.RegionMinimumPriceNQ?.Price:N0}{GilIcon}"));
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
+                PrintNqHq(mbData.RegionMinimumPriceNQ?.Price, mbData.RegionMinimumPriceHQ?.Price);
 
-                if (mb.RegionMinimumPriceHQ != null) {
-                    if (mb.RegionMinimumPriceNQ != null)
-                        payloads.Add(new TextPayload("/"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{mb.RegionMinimumPriceHQ?.Price:N0}{GilIcon}"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
-
-                var recentTime = hq ? mb.RegionMinimumPriceHQ?.Time : mb.RegionMinimumPriceNQ?.Time;
-                if (recentTime != null) {
-                    payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
-                    payloads.Add(new UIForegroundPayload(0));
-                }
+                var recentTime = hq ? mbData.RegionMinimumPriceHQ?.Time : mbData.RegionMinimumPriceNQ?.Time;
+                PrintTime(recentTime);
             }
-            
+
             if (minWorld != ownWorld && (plugin.Configuration.ShowDatacenter || (plugin.Configuration.ShowRegion && minDc == ownDc))) {
-                if (!priceHeader) {
-                    payloads.Add(new TextPayload("Marketboard Price:"));
-                    priceHeader = true;
-                }
+                PriceHeader();
 
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{minWorld}): "));
-                if (mb.MinimumPriceNQ != null) {
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{mb.MinimumPriceNQ?.Price:N0}{GilIcon}"));
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
+                PrintNqHq(mbData.MinimumPriceNQ?.Price, mbData.MinimumPriceHQ?.Price);
 
-                if (mb.MinimumPriceHQ != null) {
-                    if (mb.MinimumPriceNQ != null)
-                        payloads.Add(new TextPayload("/"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{mb.MinimumPriceHQ?.Price:N0}{GilIcon}"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
-
-                var recentTime = hq ? mb.MinimumPriceHQ?.Time : mb.MinimumPriceNQ?.Time;
-                if (recentTime != null) {
-                    payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
-                    payloads.Add(new UIForegroundPayload(0));
-                }
+                var recentTime = hq ? mbData.MinimumPriceHQ?.Time : mbData.MinimumPriceNQ?.Time;
+                PrintTime(recentTime);
             }
 
-            if ((mb.OwnMinimumPriceHQ != null || mb.OwnMinimumPriceNQ != null) && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
-                if (!priceHeader)
-                    payloads.Add(new TextPayload("Marketboard Price:"));
+            if ((mbData.OwnMinimumPriceHQ != null || mbData.OwnMinimumPriceNQ != null) && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
+                PriceHeader();
+                
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
-                if (mb.OwnMinimumPriceNQ != null) {
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{mb.OwnMinimumPriceNQ?.Price:N0}{GilIcon}"));
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
+                PrintNqHq( mbData.OwnMinimumPriceNQ?.Price, mbData.OwnMinimumPriceHQ?.Price);
 
-                if (mb.OwnMinimumPriceHQ != null) {
-                    if (mb.OwnMinimumPriceNQ != null)
-                        payloads.Add(new TextPayload("/"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{mb.OwnMinimumPriceHQ?.Price:N0}{GilIcon}"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
-
-                var recentTime = hq ? mb.OwnMinimumPriceHQ?.Time : mb.OwnMinimumPriceNQ?.Time;
-                if (recentTime != null) {
-                    payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
-                    payloads.Add(new UIForegroundPayload(0));
-                }
+                var recentTime = hq ? mbData.OwnMinimumPriceHQ?.Time : mbData.OwnMinimumPriceNQ?.Time;
+                PrintTime(recentTime);
             }
 
             var recentHeader = false;
-            var recentWorld = hq ? mb.MostRecentPurchaseHQ?.World : mb.MostRecentPurchaseNQ?.World;
-            var recentDc = hq ? mb.RegionMostRecentPurchaseHQ?.Datacenter : mb.RegionMostRecentPurchaseNQ?.Datacenter;
-            if (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc != ownDc) {
+            void RecentHeader() {
+                if (recentHeader) return;
                 if (payloads.Count > 0)
                     payloads.Add(new TextPayload("\n"));
                 payloads.Add(new TextPayload("Most Recent Purchase:"));
                 recentHeader = true;
-                
-                var recentWorldRegion = hq ? mb.RegionMostRecentPurchaseHQ?.World ?? mb.RegionMostRecentPurchaseNQ?.World : mb.RegionMostRecentPurchaseNQ?.World ?? mb.RegionMostRecentPurchaseHQ?.World;
-                
+            }
+            
+            var recentWorld = hq ? mbData.MostRecentPurchaseHQ?.World : mbData.MostRecentPurchaseNQ?.World;
+            var recentDc = hq ? mbData.RegionMostRecentPurchaseHQ?.Datacenter : mbData.RegionMostRecentPurchaseNQ?.Datacenter;
+            if (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc != ownDc) {
+                RecentHeader();
+
+                var recentWorldRegion = hq
+                    ? mbData.RegionMostRecentPurchaseHQ?.World ?? mbData.RegionMostRecentPurchaseNQ?.World
+                    : mbData.RegionMostRecentPurchaseNQ?.World ?? mbData.RegionMostRecentPurchaseHQ?.World;
+
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{recentWorldRegion} {recentDc}): "));
-                if (mb.RegionMostRecentPurchaseNQ != null) {
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{mb.RegionMostRecentPurchaseNQ?.Price:N0}{GilIcon}"));
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
+                PrintNqHq(mbData.RegionMostRecentPurchaseNQ?.Price, mbData.RegionMostRecentPurchaseHQ?.Price);
 
-                if (mb.RegionMostRecentPurchaseHQ != null) {
-                    if (mb.RegionMostRecentPurchaseNQ != null)
-                        payloads.Add(new TextPayload("/"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{mb.RegionMostRecentPurchaseHQ?.Price:N0}{GilIcon}"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
-
-                var recentTime = hq ? mb.RegionMostRecentPurchaseHQ?.Time : mb.RegionMostRecentPurchaseNQ?.Time;
-                if (recentTime != null) {
-                    payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
-                    payloads.Add(new UIForegroundPayload(0));
-                }
+                var recentTime = hq ? mbData.RegionMostRecentPurchaseHQ?.Time : mbData.RegionMostRecentPurchaseNQ?.Time;
+                PrintTime(recentTime);
             }
-            
+
             if (recentWorld != null && recentWorld != ownWorld && (plugin.Configuration.ShowMostRecentPurchase || (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc == ownDc))) {
-                if (!recentHeader) {
-                    if (payloads.Count > 0)
-                        payloads.Add(new TextPayload("\n"));
-                    payloads.Add(new TextPayload("Most Recent Purchase:"));
-                    recentHeader = true;
-                }
+                RecentHeader();
+
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{recentWorld}): "));
-                if (mb.MostRecentPurchaseNQ != null) {
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{mb.MostRecentPurchaseNQ?.Price:N0}{GilIcon}"));
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
+                PrintNqHq(mbData.MostRecentPurchaseNQ?.Price, mbData.MostRecentPurchaseHQ?.Price);
 
-                if (mb.MostRecentPurchaseHQ != null) {
-                    if (mb.MostRecentPurchaseNQ != null)
-                        payloads.Add(new TextPayload("/"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{mb.MostRecentPurchaseHQ?.Price:N0}{GilIcon}"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
-
-                var recentTime = hq ? mb.MostRecentPurchaseHQ?.Time : mb.MostRecentPurchaseNQ?.Time;
-                if (recentTime != null) {
-                    payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
-                    payloads.Add(new UIForegroundPayload(0));
-                }
+                var recentTime = hq ? mbData.MostRecentPurchaseHQ?.Time : mbData.MostRecentPurchaseNQ?.Time;
+                PrintTime(recentTime);
             }
 
-            if ((mb.OwnMostRecentPurchaseHQ != null || mb.OwnMostRecentPurchaseNQ != null) && (plugin.Configuration.ShowMostRecentPurchaseWorld || (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownWorld))) {
-                if (!recentHeader) {
-                    if (payloads.Count > 0)
-                        payloads.Add(new TextPayload("\n"));
-                    payloads.Add(new TextPayload("Most Recent Purchase:"));
-                }
+            if ((mbData.OwnMostRecentPurchaseHQ != null || mbData.OwnMostRecentPurchaseNQ != null) 
+                && (plugin.Configuration.ShowMostRecentPurchaseWorld || (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownWorld))) {
+                RecentHeader();
 
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
-                if (mb.OwnMostRecentPurchaseNQ != null) {
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{mb.OwnMostRecentPurchaseNQ?.Price:N0}{GilIcon}"));
-                    if (!hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
+                PrintNqHq(mbData.OwnMostRecentPurchaseNQ?.Price, mbData.OwnMostRecentPurchaseHQ?.Price);
 
-                if (mb.OwnMostRecentPurchaseHQ != null) {
-                    if (mb.OwnMostRecentPurchaseNQ != null)
-                        payloads.Add(new TextPayload("/"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{mb.OwnMostRecentPurchaseHQ?.Price:N0}{GilIcon}"));
-                    if (hq)
-                        payloads.Add(new UIForegroundPayload(0));
-                }
+                var recentTime = hq ? mbData.OwnMostRecentPurchaseHQ?.Time : mbData.OwnMostRecentPurchaseNQ?.Time;
+                PrintTime(recentTime);
+            }
 
-                var recentTime = hq ? mb.OwnMostRecentPurchaseHQ?.Time : mb.OwnMostRecentPurchaseNQ?.Time;
-                if (recentTime != null) {
-                    payloads.Add(new UIForegroundPayload(20));
-                    payloads.Add(new TextPayload($" ({PrintDuration(DateTime.Now.Subtract(recentTime.Value))})"));
-                    payloads.Add(new UIForegroundPayload(0));
-                }
+            if ((mbData.AverageSalePriceNQ != null || mbData.AverageSalePriceHQ != null) && plugin.Configuration.ShowAverageSalePrice) {
+                if (payloads.Count > 0)
+                    payloads.Add(new TextPayload("\n"));
+                payloads.Add(new TextPayload($"Average sale price ({mbData.Scope}): "));
+                PrintNqHq(mbData.AverageSalePriceNQ, mbData.AverageSalePriceHQ);
+            }
+
+            if ((mbData.DailySaleVelocityNQ != null || mbData.DailySaleVelocityHQ != null) && plugin.Configuration.ShowDailySaleVelocity) {
+                if (payloads.Count > 0)
+                    payloads.Add(new TextPayload("\n"));
+                payloads.Add(new TextPayload($"Sales per day ({mbData.Scope}): "));
+                PrintNqHq(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ, "N1", false);
             }
         }
 
@@ -393,7 +320,6 @@ public class ItemPriceTooltip : IDisposable {
     private void Cleanup() {
         unsafe {
             var atkUnitBase = (AtkUnitBase*)Service.GameGui.GetAddonByName("ItemDetail");
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse -- wrong!
             if (atkUnitBase == null)
                 return;
 

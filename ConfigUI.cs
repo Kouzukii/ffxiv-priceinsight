@@ -39,7 +39,8 @@ class ConfigUI : IDisposable {
                 conf.PrefetchInventory = configValue;
                 conf.Save();
             }
-            TooltipPrefetchInventory();
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Prefetch prices for all items in inventory, chocobo saddlebag and retainer when logging in.\nWARNING: Causes high network load with the \"Region\" setting enabled.");
 
             configValue = conf.UseCurrentWorld;
             if (ImGui.Checkbox("Use current world as home world", ref configValue)) {
@@ -47,8 +48,9 @@ class ConfigUI : IDisposable {
                 conf.Save();
                 plugin.ClearCache();
             }
-            TooltipUseCurrentWorld();
-            
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("The current world you're on will be considered your \"home world\".\nUseful if you're datacenter travelling and want to see prices there.");
+
             ImGui.Separator();
             ImGui.PushID(0);
             
@@ -104,40 +106,29 @@ class ConfigUI : IDisposable {
             
             ImGui.PopID();
             ImGui.Separator();
-
-            configValue = conf.IgnoreOldData;
-            if (ImGui.Checkbox("Ignore data older than 1 month", ref configValue)) {
-                conf.IgnoreOldData = configValue;
+            
+            configValue = conf.ShowDailySaleVelocity;
+            if (ImGui.Checkbox("Show sales per day", ref configValue)) {
+                conf.ShowDailySaleVelocity = configValue;
                 conf.Save();
             }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Show the average sales per day based on the last 20 purchases.");
+
+            configValue = conf.ShowAverageSalePrice;
+            if (ImGui.Checkbox("Show average sale price", ref configValue)) {
+                conf.ShowAverageSalePrice = configValue;
+                conf.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Show the average sale price based on the last 20 purchases.");
         }
 
         ImGui.End();
     }
 
-    private static void TooltipUseCurrentWorld() {
-        if (ImGui.IsItemHovered()) {
-            ImGui.BeginTooltip();
-            ImGui.TextUnformatted(
-                "The current world you're on will be considered your \"home world\".\nUseful if you're datacenter travelling and want to see prices there.");
-            ImGui.EndTooltip();
-        }
-    }
-
-    private static void TooltipPrefetchInventory() {
-        if (ImGui.IsItemHovered()) {
-            ImGui.BeginTooltip();
-            ImGui.TextUnformatted(
-                "Prefetch prices for all items in inventory, chocobo saddlebag and retainer when logging in.\nWARNING: Causes high network load with the \"Region\" setting enabled.");
-            ImGui.EndTooltip();
-        }
-    }
-
     private static void TooltipRegion() {
-        if (ImGui.IsItemHovered()) {
-            ImGui.BeginTooltip();
-            ImGui.TextUnformatted("Include all datacenters available via datacenter traveling.");
-            ImGui.EndTooltip();
-        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Include all datacenters available via datacenter traveling.");
     }
 }
