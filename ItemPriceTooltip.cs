@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -10,7 +11,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace PriceInsight;
 
-public class ItemPriceTooltip : IDisposable {
+public partial class ItemPriceTooltip : IDisposable {
     private readonly PriceInsightPlugin plugin;
     private const int NodeId = 32612;
     private const char HQIcon = '';
@@ -41,6 +42,16 @@ public class ItemPriceTooltip : IDisposable {
         }
     }
 
+    [GeneratedRegex("(\\d+)\\/\\d+ \\(Total: \\d+\\)", RegexOptions.Compiled)]
+    private static partial Regex TooltipStackRegex();
+
+    public unsafe int GetTooltipStackSize(AtkUnitBase* itemTooltip) {
+        var stackSizeNode = itemTooltip->GetTextNodeById(33);
+        var text = stackSizeNode->NodeText.ToString();
+        var match = TooltipStackRegex().Match(text);
+        return match.Success ? int.Parse(match.Groups[1].Value) : 1;
+    }
+
     public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
         if (Service.GameGui.HoveredItem is >= 2000000 or >= 500000 and < 1000000) {
             UpdateItemTooltip(itemTooltip, new List<Payload>());
@@ -49,7 +60,7 @@ public class ItemPriceTooltip : IDisposable {
 
         var refresh = plugin.Configuration.RefreshWithAlt && Service.KeyState[VirtualKey.MENU];
         var (marketBoardData, lookupState) = plugin.ItemPriceLookup.Get((uint)(Service.GameGui.HoveredItem % 500000), refresh);
-        var payloads = ParseMbData(Service.GameGui.HoveredItem >= 500000, marketBoardData, lookupState);
+        var payloads = ParseMbData(Service.GameGui.HoveredItem >= 500000, GetTooltipStackSize(itemTooltip), marketBoardData, lookupState);
 
         UpdateItemTooltip(itemTooltip, payloads);
     }
@@ -116,7 +127,7 @@ public class ItemPriceTooltip : IDisposable {
         insertNode->SetPositionFloat(insertNode->X, insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
-    private List<Payload> ParseMbData(bool hq, MarketBoardData? mbData, LookupState lookupState) {
+    private List<Payload> ParseMbData(bool hq, int stackSize, MarketBoardData? mbData, LookupState lookupState) {
         var payloads = new List<Payload>();
         if (lookupState == LookupState.NonMarketable)
             return payloads;
@@ -147,20 +158,25 @@ public class ItemPriceTooltip : IDisposable {
                 priceHeader = true;
             }
 
-            void PrintNqHq<T>(T? nqPrice, T? hqPrice, string format = "N0", bool withGilIcon = true) where T : unmanaged, IFormattable {
+            void PrintNqHq(double? nqPrice, double? hqPrice, string format = "N0", bool withGilIcon = true) {
                 if (nqPrice != null) {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null).Replace(" ", " ")}{(withGilIcon ? GilIcon : "")}"));
+                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
+                    if (plugin.Configuration.ShowStackSalePrice && stackSize > 1)
+                        payloads.Add(new TextPayload($" ({(nqPrice.Value * stackSize).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
                 if (hqPrice != null) {
                     if (nqPrice != null)
                         payloads.Add(new TextPayload("/"));
+
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null).Replace(" ", " ")}{(withGilIcon ? GilIcon : "")}"));
+                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
+                    if (plugin.Configuration.ShowStackSalePrice && stackSize > 1)
+                        payloads.Add(new TextPayload($" ({(hqPrice.Value * stackSize).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -282,13 +298,13 @@ public class ItemPriceTooltip : IDisposable {
     public void Refresh(IDictionary<uint, MarketBoardData> mbData) {
         if (Service.GameGui.HoveredItem >= 2000000) return;
         if (mbData.TryGetValue((uint)(Service.GameGui.HoveredItem % 500000), out var data)) {
-            var newText = ParseMbData(Service.GameGui.HoveredItem >= 500000, data, LookupState.Marketable);
             Service.Framework.RunOnFrameworkThread(() => {
                 try {
                     var tooltip = Service.GameGui.GetAddonByName("ItemDetail");
                     unsafe {
                         if (tooltip == nint.Zero || !((AtkUnitBase*)tooltip)->IsVisible)
                             return;
+                        var newText = ParseMbData(Service.GameGui.HoveredItem >= 500000, GetTooltipStackSize((AtkUnitBase*)tooltip), data, LookupState.Marketable);
                         RestoreToNormal((AtkUnitBase*)tooltip);
                         UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
                     }
@@ -301,13 +317,13 @@ public class ItemPriceTooltip : IDisposable {
 
     public void FetchFailed(IList<uint> items) {
         if (!items.Contains((uint)Service.GameGui.HoveredItem % 500000)) return;
-        var newText = ParseMbData(false, null, LookupState.Faulted);
         Service.Framework.RunOnFrameworkThread(() => {
             try {
                 var tooltip = Service.GameGui.GetAddonByName("ItemDetail");
                 unsafe {
                     if (tooltip == nint.Zero || !((AtkUnitBase*)tooltip)->IsVisible)
                         return;
+                    var newText = ParseMbData(false, 0, null, LookupState.Faulted);
                     RestoreToNormal((AtkUnitBase*)tooltip);
                     UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
                 }
