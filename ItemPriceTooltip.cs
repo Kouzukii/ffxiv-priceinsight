@@ -42,7 +42,7 @@ public partial class ItemPriceTooltip : IDisposable {
         }
     }
 
-    [GeneratedRegex("(\\d+)\\/\\d+ \\(Total: \\d+\\)", RegexOptions.Compiled)]
+    [GeneratedRegex("(\\d+)\\/\\d+ \\(Total: \\d+", RegexOptions.Compiled)]
     private static partial Regex TooltipStackRegex();
 
     public unsafe int GetTooltipStackSize(AtkUnitBase* itemTooltip) {
