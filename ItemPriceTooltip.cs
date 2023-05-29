@@ -163,7 +163,7 @@ public partial class ItemPriceTooltip : IDisposable {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
-                    if (plugin.Configuration.ShowStackSalePrice && stackSize > 1)
+                    if (plugin.Configuration.ShowStackSalePrice && !hq && stackSize > 1)
                         payloads.Add(new TextPayload($" ({(nqPrice.Value * stackSize).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(0));
@@ -175,7 +175,7 @@ public partial class ItemPriceTooltip : IDisposable {
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
-                    if (plugin.Configuration.ShowStackSalePrice && stackSize > 1)
+                    if (plugin.Configuration.ShowStackSalePrice && hq && stackSize > 1)
                         payloads.Add(new TextPayload($" ({(hqPrice.Value * stackSize).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(0));
