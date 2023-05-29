@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 
@@ -13,6 +13,8 @@ public class Configuration : IPluginConfiguration {
     public bool ShowDatacenter { get; set; } = true;
 
     public bool ShowWorld { get; set; } = true;
+
+    public bool ShowStackSalePrice { get; set; } = false;
 
     public bool ShowMostRecentPurchase { get; set; } = false;
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using ImGuiNET;
 
 namespace PriceInsight; 
@@ -50,6 +50,14 @@ class ConfigUI : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("The current world you're on will be considered your \"home world\".\nUseful if you're datacenter travelling and want to see prices there.");
+
+            configValue = conf.ShowStackSalePrice;
+            if (ImGui.Checkbox("Show stack sale price", ref configValue)) {
+                conf.ShowStackSalePrice = configValue;
+                conf.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Show the price of the hovered stack if sold at the given unit price.");
 
             ImGui.Separator();
             ImGui.PushID(0);
