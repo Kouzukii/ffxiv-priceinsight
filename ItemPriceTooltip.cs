@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
@@ -42,14 +43,14 @@ public partial class ItemPriceTooltip : IDisposable {
         }
     }
 
-    [GeneratedRegex("(\\d+)\\/\\d+ \\(Total: \\d+", RegexOptions.Compiled)]
+    [GeneratedRegex(@"([\d,.]+)\/[\d,.]+ \(Total: \d", RegexOptions.Compiled)]
     private static partial Regex TooltipStackRegex();
 
     public unsafe int GetTooltipStackSize(AtkUnitBase* itemTooltip) {
         var stackSizeNode = itemTooltip->GetTextNodeById(33);
         var text = stackSizeNode->NodeText.ToString();
         var match = TooltipStackRegex().Match(text);
-        return match.Success ? int.Parse(match.Groups[1].Value) : 1;
+        return match.Success ? int.Parse(match.Groups[1].Value, NumberStyles.AllowThousands) : 1;
     }
 
     public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
