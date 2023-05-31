@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -16,6 +17,8 @@ public class ItemPriceTooltip : IDisposable {
     private const char HQIcon = '';
     private const char GilIcon = '';
     private const uint TooltipMovedUp = 0x80000000;
+
+    public int? LastItemQuantity;
 
     public ItemPriceTooltip(PriceInsightPlugin plugin) {
         this.plugin = plugin;
@@ -147,20 +150,25 @@ public class ItemPriceTooltip : IDisposable {
                 priceHeader = true;
             }
 
-            void PrintNqHq<T>(T? nqPrice, T? hqPrice, string format = "N0", bool withGilIcon = true) where T : unmanaged, IFormattable {
+            void PrintNqHq<T>(T? nqPrice, T? hqPrice, string format = "N0", bool withGilIcon = true) where T : unmanaged, INumberBase<T> {
                 if (nqPrice != null) {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null).Replace(" ", " ")}{(withGilIcon ? GilIcon : "")}"));
+                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
+                    if (plugin.Configuration.ShowStackSalePrice && !hq && LastItemQuantity > 1)
+                        payloads.Add(new TextPayload($" ({(nqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
                 if (hqPrice != null) {
                     if (nqPrice != null)
                         payloads.Add(new TextPayload("/"));
+
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null).Replace(" ", " ")}{(withGilIcon ? GilIcon : "")}"));
+                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
+                    if (plugin.Configuration.ShowStackSalePrice && hq && LastItemQuantity > 1)
+                        payloads.Add(new TextPayload($" ({(hqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }

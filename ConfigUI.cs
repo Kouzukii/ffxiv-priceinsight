@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using ImGuiNET;
 
 namespace PriceInsight; 
@@ -122,6 +122,14 @@ class ConfigUI : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show the average sale price based on the last 20 purchases.");
+            
+            configValue = conf.ShowStackSalePrice;
+            if (ImGui.Checkbox("Show stack sale price", ref configValue)) {
+                conf.ShowStackSalePrice = configValue;
+                conf.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Show the price of the hovered stack if sold at the given unit price.");
         }
 
         ImGui.End();
