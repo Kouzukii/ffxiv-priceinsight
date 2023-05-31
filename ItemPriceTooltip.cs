@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -149,13 +150,13 @@ public class ItemPriceTooltip : IDisposable {
                 priceHeader = true;
             }
 
-            void PrintNqHq(double? nqPrice, double? hqPrice, string format = "N0", bool withGilIcon = true) {
+            void PrintNqHq<T>(T? nqPrice, T? hqPrice, string format = "N0", bool withGilIcon = true) where T : unmanaged, INumberBase<T> {
                 if (nqPrice != null) {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
                     if (plugin.Configuration.ShowStackSalePrice && !hq && LastItemQuantity > 1)
-                        payloads.Add(new TextPayload($" ({(nqPrice.Value * LastItemQuantity.Value).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
+                        payloads.Add(new TextPayload($" ({(nqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -167,7 +168,7 @@ public class ItemPriceTooltip : IDisposable {
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
                     if (plugin.Configuration.ShowStackSalePrice && hq && LastItemQuantity > 1)
-                        payloads.Add(new TextPayload($" ({(hqPrice.Value * LastItemQuantity.Value).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
+                        payloads.Add(new TextPayload($" ({(hqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -289,13 +290,13 @@ public class ItemPriceTooltip : IDisposable {
     public void Refresh(IDictionary<uint, MarketBoardData> mbData) {
         if (Service.GameGui.HoveredItem >= 2000000) return;
         if (mbData.TryGetValue((uint)(Service.GameGui.HoveredItem % 500000), out var data)) {
+            var newText = ParseMbData(Service.GameGui.HoveredItem >= 500000, data, LookupState.Marketable);
             Service.Framework.RunOnFrameworkThread(() => {
                 try {
                     var tooltip = Service.GameGui.GetAddonByName("ItemDetail");
                     unsafe {
                         if (tooltip == nint.Zero || !((AtkUnitBase*)tooltip)->IsVisible)
                             return;
-                        var newText = ParseMbData(Service.GameGui.HoveredItem >= 500000, data, LookupState.Marketable);
                         RestoreToNormal((AtkUnitBase*)tooltip);
                         UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
                     }
@@ -308,13 +309,13 @@ public class ItemPriceTooltip : IDisposable {
 
     public void FetchFailed(IList<uint> items) {
         if (!items.Contains((uint)Service.GameGui.HoveredItem % 500000)) return;
+        var newText = ParseMbData(false, null, LookupState.Faulted);
         Service.Framework.RunOnFrameworkThread(() => {
             try {
                 var tooltip = Service.GameGui.GetAddonByName("ItemDetail");
                 unsafe {
                     if (tooltip == nint.Zero || !((AtkUnitBase*)tooltip)->IsVisible)
                         return;
-                    var newText = ParseMbData(false, null, LookupState.Faulted);
                     RestoreToNormal((AtkUnitBase*)tooltip);
                     UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
                 }
