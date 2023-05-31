@@ -11,7 +11,7 @@ public class Hooks : IDisposable {
         
     private unsafe delegate void* AddonOnUpdate(AtkUnitBase* atkUnitBase, NumberArrayData** nums, StringArrayData** strings);
 
-    private unsafe delegate bool AgentItemDetailOnItemHovered(void* a1, void* a2, void* a3, void* a4, uint a5, uint a6, int* a7);
+    private unsafe delegate byte AgentItemDetailOnItemHovered(void* a1, void* a2, void* a3, void* a4, uint a5, uint a6, int* a7);
 
     [Signature("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 41 54 41 55 41 56 41 57 48 83 EC 20 4C 8B AA", DetourName = nameof(ItemDetailOnUpdateDetour))]
     private readonly Hook<AddonOnUpdate> itemDetailOnUpdateHook = null!;
@@ -42,7 +42,7 @@ public class Hooks : IDisposable {
         return ret;
     }
 
-    private unsafe bool AgentItemDetailOnItemHoveredDetour(void* a1, void* a2, void* a3, void* a4, uint a5, uint a6, int* a7) {
+    private unsafe byte AgentItemDetailOnItemHoveredDetour(void* a1, void* a2, void* a3, void* a4, uint a5, uint a6, int* a7) {
         var ret = agentItemDetailOnItemHovered.Original(a1, a2, a3, a4, a5, a6, a7);
         try {
             plugin.ItemPriceTooltip.LastItemQuantity = a7[3];
