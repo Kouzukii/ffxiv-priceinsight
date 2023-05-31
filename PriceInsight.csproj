@@ -11,7 +11,7 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>PriceInsight</AssemblyName>
-		<Version>2.4.0.0</Version>
+		<Version>2.5.0.0</Version>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->
@@ -88,18 +88,4 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
-
-	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-		<OutputPath>$(AppData)\XIVLauncher\devPlugins\$(AssemblyName)</OutputPath>
-	</PropertyGroup>
-
-
-	<!-- Dalamud Packager Task-->
-	<Target Name="DalamudPackageDebug" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-		<DalamudPackager ProjectDir="$(ProjectDir)" OutputPath="$(AppData)\XIVLauncher\devPlugins\$(AssemblyName)" AssemblyName="$(AssemblyName)" MakeZip="false" VersionComponents="4" />
-	</Target>
-
-	<Target Name="DalamudPackageRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-		<DalamudPackager ProjectDir="$(ProjectDir)" OutputPath="$(TargetDir)" AssemblyName="$(AssemblyName)" MakeZip="true" Exclude="$(AssemblyName).pdb" VersionComponents="4" />
-	</Target>
 </Project>
