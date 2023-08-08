@@ -155,8 +155,8 @@ public class ItemPriceTooltip : IDisposable {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
-                    if (plugin.Configuration.ShowStackSalePrice && !hq && LastItemQuantity > 1)
-                        payloads.Add(new TextPayload($" ({(nqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
+                    if (plugin.Configuration.ShowStackSalePrice && !hq && LastItemQuantity > 1 && withGilIcon)
+                        payloads.Add(new TextPayload($" ({(nqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{GilIcon})"));
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -167,8 +167,8 @@ public class ItemPriceTooltip : IDisposable {
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
-                    if (plugin.Configuration.ShowStackSalePrice && hq && LastItemQuantity > 1)
-                        payloads.Add(new TextPayload($" ({(hqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{(withGilIcon ? GilIcon : "")})"));
+                    if (plugin.Configuration.ShowStackSalePrice && hq && LastItemQuantity > 1 && withGilIcon)
+                        payloads.Add(new TextPayload($" ({(hqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{GilIcon})"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -213,7 +213,7 @@ public class ItemPriceTooltip : IDisposable {
                 PriceHeader();
                 
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
-                PrintNqHq( mbData.OwnMinimumPriceNQ?.Price, mbData.OwnMinimumPriceHQ?.Price);
+                PrintNqHq(mbData.OwnMinimumPriceNQ?.Price, mbData.OwnMinimumPriceHQ?.Price);
 
                 var recentTime = hq ? mbData.OwnMinimumPriceHQ?.Time : mbData.OwnMinimumPriceNQ?.Time;
                 PrintTime(recentTime);
@@ -280,7 +280,7 @@ public class ItemPriceTooltip : IDisposable {
                 if (payloads.Count > 0)
                     payloads.Add(new TextPayload("\n"));
                 payloads.Add(new TextPayload($"Sales per day ({mbData.Scope}): "));
-                PrintNqHq(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ, "N1", false);
+                PrintNqHq(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ, format: "N1", withGilIcon: false);
             }
         }
 
