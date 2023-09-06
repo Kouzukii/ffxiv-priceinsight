@@ -32,6 +32,12 @@ public class Configuration : IPluginConfiguration {
 
     public bool PrefetchInventory { get; set; } = true;
 
+    public bool ShowAge { get; set; } = true;
+
+    public bool ShowDatacenterOnCrossWorlds { get; set; } = true;
+
+    public bool ShowBothNqAndHq { get; set; } = true;
+
     // the below exist just to make saving less cumbersome
 
     [NonSerialized] private DalamudPluginInterface pluginInterface = null!;

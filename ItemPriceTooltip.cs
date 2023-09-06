@@ -6,6 +6,7 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
 using Dalamud.Logging;
+using FFXIVClientStructs.FFXIV.Client.Graphics;
 using FFXIVClientStructs.FFXIV.Client.System.Memory;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
@@ -16,7 +17,6 @@ public class ItemPriceTooltip : IDisposable {
     private const int NodeId = 32612;
     private const char HQIcon = '';
     private const char GilIcon = '';
-    private const uint TooltipMovedUp = 0x80000000;
 
     public int? LastItemQuantity;
 
@@ -24,29 +24,25 @@ public class ItemPriceTooltip : IDisposable {
         this.plugin = plugin;
     }
 
-    public unsafe void RestoreToNormal(AtkUnitBase* itemTooltip) {
+    public static unsafe void RestoreToNormal(AtkUnitBase* itemTooltip) {
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
             var n = itemTooltip->UldManager.NodeList[i];
             if (n->NodeID != NodeId || !n->IsVisible)
                 continue;
+            n->ToggleVisibility(false);
             var insertNode = itemTooltip->GetNodeById(2);
             if (insertNode == null)
                 return;
             itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height - n->Height - 4));
-            itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-            if ((n->Flags_2 & TooltipMovedUp) == TooltipMovedUp) {
-                itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y + n->Height));
-                n->Flags_2 &= ~TooltipMovedUp;
-            }
-
-            insertNode->SetPositionFloat(insertNode->X, insertNode->Y - n->Height - 4);
+            itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
+            itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
+            insertNode->SetY(insertNode->Y - n->Height - 4);
             break;
         }
     }
 
     public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
         if (Service.GameGui.HoveredItem is >= 2000000 or >= 500000 and < 1000000) {
-            UpdateItemTooltip(itemTooltip, new List<Payload>());
             return;
         }
 
@@ -57,7 +53,11 @@ public class ItemPriceTooltip : IDisposable {
         UpdateItemTooltip(itemTooltip, payloads);
     }
 
-    private static unsafe void UpdateItemTooltip(AtkUnitBase* itemTooltip, List<Payload> payloads) {
+    private unsafe void UpdateItemTooltip(AtkUnitBase* itemTooltip, List<Payload> payloads) {
+        if (payloads.Count == 0) {
+            return;
+        }
+        
         AtkTextNode* priceNode = null;
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
             var node = itemTooltip->UldManager.NodeList[i];
@@ -67,33 +67,24 @@ public class ItemPriceTooltip : IDisposable {
             break;
         }
 
-        if (payloads.Count == 0) {
-            if (priceNode != null)
-                priceNode->AtkResNode.ToggleVisibility(false);
-            return;
-        }
-
         var insertNode = itemTooltip->GetNodeById(2);
         if (insertNode == null)
             return;
         if (priceNode == null) {
-            var baseNode = itemTooltip->GetTextNodeById(43);
-            if (baseNode == null)
-                return;
             priceNode = IMemorySpace.GetUISpace()->Create<AtkTextNode>();
             priceNode->AtkResNode.Type = NodeType.Text;
             priceNode->AtkResNode.NodeID = NodeId;
-            priceNode->AtkResNode.Flags = (short)(NodeFlags.AnchorLeft | NodeFlags.AnchorTop);
+            priceNode->AtkResNode.NodeFlags = NodeFlags.AnchorLeft | NodeFlags.AnchorTop;
             priceNode->AtkResNode.DrawFlags = 0;
-            priceNode->AtkResNode.SetWidth(50);
-            priceNode->AtkResNode.SetHeight(20);
-            priceNode->AtkResNode.Color = baseNode->AtkResNode.Color;
-            priceNode->TextColor = baseNode->TextColor;
-            priceNode->EdgeColor = baseNode->EdgeColor;
+            priceNode->AtkResNode.X = 17;
+            priceNode->AtkResNode.Width = 50;
+            priceNode->AtkResNode.Color = new ByteColor{R = 255, G = 255, B = 255, A = 255};
+            priceNode->TextColor = new ByteColor{R = 255, G = 255, B = 255, A = 255};
+            priceNode->EdgeColor = new ByteColor{R = 0, G = 0, B = 0, A = 255};
             priceNode->LineSpacing = 18;
             priceNode->AlignmentFontType = 0x00;
             priceNode->FontSize = 12;
-            priceNode->TextFlags = (byte)((TextFlags)baseNode->TextFlags | TextFlags.MultiLine | TextFlags.AutoAdjustNodeSize);
+            priceNode->TextFlags = (byte)(TextFlags.Emboss | TextFlags.MultiLine | TextFlags.AutoAdjustNodeSize);
             priceNode->TextFlags2 = 0;
             var prev = insertNode->PrevSiblingNode;
             priceNode->AtkResNode.ParentNode = insertNode->ParentNode;
@@ -108,15 +99,16 @@ public class ItemPriceTooltip : IDisposable {
         priceNode->AtkResNode.ToggleVisibility(true);
         priceNode->SetText(new SeString(payloads).Encode());
         priceNode->ResizeNodeForCurrentText();
-        priceNode->AtkResNode.SetPositionFloat(17, itemTooltip->WindowNode->AtkResNode.Height - 8f);
+        priceNode->AtkResNode.SetY(itemTooltip->WindowNode->AtkResNode.Height - 8);
         itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
-        itemTooltip->WindowNode->Component->UldManager.SearchNodeById(2)->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-        if (ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - itemTooltip->WindowNode->AtkResNode.Height < 36) {
-            itemTooltip->SetPosition(itemTooltip->X, (short)(itemTooltip->Y - priceNode->AtkResNode.Height));
-            priceNode->AtkResNode.Flags_2 |= TooltipMovedUp;
+        itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
+        itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
+        var remainingSpace = ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - itemTooltip->WindowNode->AtkResNode.Height - 36;
+        if (remainingSpace < 0) {
+            plugin.Hooks.ItemDetailSetPositionPreservingOriginal(itemTooltip, itemTooltip->X, (short)(itemTooltip->Y + remainingSpace), 1);
         }
 
-        insertNode->SetPositionFloat(insertNode->X, insertNode->Y + priceNode->AtkResNode.Height + 4);
+        insertNode->SetY(insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
     private List<Payload> ParseMbData(bool hq, MarketBoardData? mbData, LookupState lookupState) {
@@ -151,7 +143,7 @@ public class ItemPriceTooltip : IDisposable {
             }
 
             void PrintNqHq<T>(T? nqPrice, T? hqPrice, string format = "N0", bool withGilIcon = true) where T : unmanaged, INumberBase<T> {
-                if (nqPrice != null) {
+                if (nqPrice != null && (plugin.Configuration.ShowBothNqAndHq || !hq)) {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(506));
                     payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
@@ -160,8 +152,8 @@ public class ItemPriceTooltip : IDisposable {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
-                if (hqPrice != null) {
-                    if (nqPrice != null)
+                if (hqPrice != null && (plugin.Configuration.ShowBothNqAndHq || hq)) {
+                    if (nqPrice != null && plugin.Configuration.ShowBothNqAndHq)
                         payloads.Add(new TextPayload("/"));
 
                     if (hq)
@@ -190,11 +182,16 @@ public class ItemPriceTooltip : IDisposable {
 
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
-                payloads.Add(new TextPayload($"{minWorldRegion} {minDc}): "));
+                payloads.Add(new TextPayload($"{minWorldRegion}"));
+                if (plugin.Configuration.ShowDatacenterOnCrossWorlds)
+                    payloads.Add(new TextPayload($" {minDc}"));
+                payloads.Add(new TextPayload("): "));
                 PrintNqHq(mbData.RegionMinimumPriceNQ?.Price, mbData.RegionMinimumPriceHQ?.Price);
 
-                var recentTime = hq ? mbData.RegionMinimumPriceHQ?.Time : mbData.RegionMinimumPriceNQ?.Time;
-                PrintTime(recentTime);
+                if (plugin.Configuration.ShowAge) {
+                    var recentTime = hq ? mbData.RegionMinimumPriceHQ?.Time : mbData.RegionMinimumPriceNQ?.Time;
+                    PrintTime(recentTime);
+                }
             }
 
             if (minWorld != ownWorld && (plugin.Configuration.ShowDatacenter || (plugin.Configuration.ShowRegion && minDc == ownDc))) {
@@ -205,8 +202,10 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new TextPayload($"{minWorld}): "));
                 PrintNqHq(mbData.MinimumPriceNQ?.Price, mbData.MinimumPriceHQ?.Price);
 
-                var recentTime = hq ? mbData.MinimumPriceHQ?.Time : mbData.MinimumPriceNQ?.Time;
-                PrintTime(recentTime);
+                if (plugin.Configuration.ShowAge) {
+                    var recentTime = hq ? mbData.MinimumPriceHQ?.Time : mbData.MinimumPriceNQ?.Time;
+                    PrintTime(recentTime);
+                }
             }
 
             if ((mbData.OwnMinimumPriceHQ != null || mbData.OwnMinimumPriceNQ != null) && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
@@ -215,8 +214,10 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
                 PrintNqHq(mbData.OwnMinimumPriceNQ?.Price, mbData.OwnMinimumPriceHQ?.Price);
 
-                var recentTime = hq ? mbData.OwnMinimumPriceHQ?.Time : mbData.OwnMinimumPriceNQ?.Time;
-                PrintTime(recentTime);
+                if (plugin.Configuration.ShowAge) {
+                    var recentTime = hq ? mbData.OwnMinimumPriceHQ?.Time : mbData.OwnMinimumPriceNQ?.Time;
+                    PrintTime(recentTime);
+                }
             }
 
             var recentHeader = false;
@@ -242,8 +243,10 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new TextPayload($"{recentWorldRegion} {recentDc}): "));
                 PrintNqHq(mbData.RegionMostRecentPurchaseNQ?.Price, mbData.RegionMostRecentPurchaseHQ?.Price);
 
-                var recentTime = hq ? mbData.RegionMostRecentPurchaseHQ?.Time : mbData.RegionMostRecentPurchaseNQ?.Time;
-                PrintTime(recentTime);
+                if (plugin.Configuration.ShowAge) {
+                    var recentTime = hq ? mbData.RegionMostRecentPurchaseHQ?.Time : mbData.RegionMostRecentPurchaseNQ?.Time;
+                    PrintTime(recentTime);
+                }
             }
 
             if (recentWorld != null && recentWorld != ownWorld && (plugin.Configuration.ShowMostRecentPurchase || (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc == ownDc))) {
@@ -254,8 +257,10 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new TextPayload($"{recentWorld}): "));
                 PrintNqHq(mbData.MostRecentPurchaseNQ?.Price, mbData.MostRecentPurchaseHQ?.Price);
 
-                var recentTime = hq ? mbData.MostRecentPurchaseHQ?.Time : mbData.MostRecentPurchaseNQ?.Time;
-                PrintTime(recentTime);
+                if (plugin.Configuration.ShowAge) {
+                    var recentTime = hq ? mbData.MostRecentPurchaseHQ?.Time : mbData.MostRecentPurchaseNQ?.Time;
+                    PrintTime(recentTime);
+                }
             }
 
             if ((mbData.OwnMostRecentPurchaseHQ != null || mbData.OwnMostRecentPurchaseNQ != null) 
@@ -265,8 +270,10 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
                 PrintNqHq(mbData.OwnMostRecentPurchaseNQ?.Price, mbData.OwnMostRecentPurchaseHQ?.Price);
 
-                var recentTime = hq ? mbData.OwnMostRecentPurchaseHQ?.Time : mbData.OwnMostRecentPurchaseNQ?.Time;
-                PrintTime(recentTime);
+                if (plugin.Configuration.ShowAge) {
+                    var recentTime = hq ? mbData.OwnMostRecentPurchaseHQ?.Time : mbData.OwnMostRecentPurchaseNQ?.Time;
+                    PrintTime(recentTime);
+                }
             }
 
             if ((mbData.AverageSalePriceNQ != null || mbData.AverageSalePriceHQ != null) && plugin.Configuration.ShowAverageSalePrice) {

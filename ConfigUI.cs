@@ -130,6 +130,30 @@ class ConfigUI : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show the price of the hovered stack if sold at the given unit price.");
+            
+            configValue = conf.ShowAge;
+            if (ImGui.Checkbox("Show age of data", ref configValue)) {
+                conf.ShowAge = configValue;
+                conf.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Show when the price info was last refreshed.\nCan be turned off to reduce tooltip bloat.");
+            
+            configValue = conf.ShowDatacenterOnCrossWorlds;
+            if (ImGui.Checkbox("Show datacenter for foreign worlds", ref configValue)) {
+                conf.ShowDatacenterOnCrossWorlds = configValue;
+                conf.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Show the datacenter for worlds from other datacenters when displaying prices for the entire region.\nCan be turned off to reduce tooltip bloat.");
+            
+            configValue = conf.ShowBothNqAndHq;
+            if (ImGui.Checkbox("Always display NQ and HQ prices", ref configValue)) {
+                conf.ShowBothNqAndHq = configValue;
+                conf.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Show the prices for both NQ and HQ of an item.\nWhen turned off will only display price for the current quality (use Ctrl to switch between NQ and HQ).");
         }
 
         ImGui.End();

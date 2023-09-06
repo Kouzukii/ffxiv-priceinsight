@@ -86,16 +86,16 @@ public class PriceInsightPlugin : IDalamudPlugin {
                     var container = manager->GetInventoryContainer(type);
                     if (container == null || container->Loaded == 0)
                         continue;
-                    var emptyItems = 0;
+                    var empty = true;
                     for (var i = 0; i < container->Size; i++) {
                         var item = &container->Items[i];
                         var itemId = item->ItemID;
                         if (itemId == 0) {
-                            emptyItems++;
                             continue;
                         }
 
                         items.Add(itemId % 500000);
+                        empty = false;
 
                         if (items.Count >= 50) {
                             ItemPriceLookup.Fetch(items, false);
@@ -103,7 +103,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
                         }
                     }
 
-                    if (emptyItems == container->Size) {
+                    if (empty) {
                         // The inventory was completely empty (retainer and companion inventory are empty before they're loaded)
                         inventoriesToScan[type] = DateTime.Now.AddSeconds(-59 * 60 + 10);
                         continue;

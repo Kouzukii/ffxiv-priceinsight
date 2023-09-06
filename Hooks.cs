@@ -9,7 +9,7 @@ namespace PriceInsight;
 public class Hooks : IDisposable {
     private readonly PriceInsightPlugin plugin;
         
-    private unsafe delegate void* AddonOnUpdate(AtkUnitBase* atkUnitBase, NumberArrayData** nums, StringArrayData** strings);
+    private unsafe delegate void* AddonOnUpdate(AtkUnitBase* atkUnitBase, NumberArrayData* nums, StringArrayData* strings);
 
     private unsafe delegate byte AgentItemDetailOnItemHovered(void* a1, void* a2, void* a3, void* a4, uint a5, uint a6, int* a7);
 
@@ -18,6 +18,9 @@ public class Hooks : IDisposable {
 
     [Signature("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 41 56 41 57 48 83 EC 40 8B 81", DetourName = nameof(AgentItemDetailOnItemHoveredDetour))]
     private readonly Hook<AgentItemDetailOnItemHovered> agentItemDetailOnItemHovered = null!;
+    
+    [Signature("E8 ?? ?? ?? ?? 45 85 E4 75 68 B2 01 48 8B CF")]
+    public readonly unsafe delegate*unmanaged[Thiscall]<AtkUnitBase*, short, short, byte, void> ItemDetailSetPositionPreservingOriginal = null!;
 
     public Hooks(PriceInsightPlugin plugin) {
         this.plugin = plugin;
@@ -26,9 +29,9 @@ public class Hooks : IDisposable {
         agentItemDetailOnItemHovered.Enable();
     }
 
-    private unsafe void* ItemDetailOnUpdateDetour(AtkUnitBase* atkUnitBase, NumberArrayData** nums, StringArrayData** strings) {
+    private unsafe void* ItemDetailOnUpdateDetour(AtkUnitBase* atkUnitBase, NumberArrayData* nums, StringArrayData* strings) {
         try {
-            plugin.ItemPriceTooltip.RestoreToNormal(atkUnitBase);
+            ItemPriceTooltip.RestoreToNormal(atkUnitBase);
         } catch (Exception ex) {
             PluginLog.LogError(ex, "Failed to handle item detail detour");
         }
