@@ -71,6 +71,9 @@ public class ItemPriceTooltip : IDisposable {
         if (insertNode == null)
             return;
         if (priceNode == null) {
+            var baseNode = itemTooltip->GetTextNodeById(43);
+            if (baseNode == null)
+                return;
             priceNode = IMemorySpace.GetUISpace()->Create<AtkTextNode>();
             priceNode->AtkResNode.Type = NodeType.Text;
             priceNode->AtkResNode.NodeID = NodeId;
@@ -78,13 +81,13 @@ public class ItemPriceTooltip : IDisposable {
             priceNode->AtkResNode.DrawFlags = 0;
             priceNode->AtkResNode.X = 17;
             priceNode->AtkResNode.Width = 50;
-            priceNode->AtkResNode.Color = new ByteColor{R = 255, G = 255, B = 255, A = 255};
-            priceNode->TextColor = new ByteColor{R = 255, G = 255, B = 255, A = 255};
-            priceNode->EdgeColor = new ByteColor{R = 0, G = 0, B = 0, A = 255};
+            priceNode->AtkResNode.Color = baseNode->AtkResNode.Color;
+            priceNode->TextColor = baseNode->TextColor;
+            priceNode->EdgeColor = baseNode->EdgeColor;
             priceNode->LineSpacing = 18;
             priceNode->AlignmentFontType = 0x00;
             priceNode->FontSize = 12;
-            priceNode->TextFlags = (byte)(TextFlags.Emboss | TextFlags.MultiLine | TextFlags.AutoAdjustNodeSize);
+            priceNode->TextFlags = (byte)((TextFlags)baseNode->TextFlags | TextFlags.MultiLine | TextFlags.AutoAdjustNodeSize);
             priceNode->TextFlags2 = 0;
             var prev = insertNode->PrevSiblingNode;
             priceNode->AtkResNode.ParentNode = insertNode->ParentNode;
