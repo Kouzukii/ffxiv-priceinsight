@@ -6,7 +6,6 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using Dalamud.Logging;
 using Lumina.Excel.GeneratedSheets;
 
 namespace PriceInsight;
@@ -43,7 +42,7 @@ public sealed class UniversalisClient : IDisposable {
 
             return ParseMarketBoardData(item, homeWorldId);
         } catch (Exception ex) {
-            PluginLog.LogError(ex, "Failed to retrieve data from Universalis for itemId {0}, scope {1}.", itemId, scope);
+            Service.PluginLog.Error(ex, "Failed to retrieve data from Universalis for itemId {0}, scope {1}.", itemId, scope);
             return null;
         }
     }
@@ -78,7 +77,7 @@ public sealed class UniversalisClient : IDisposable {
 
             return items;
         } catch (Exception ex) {
-            PluginLog.LogError(ex, "Failed to retrieve data from Universalis for itemIds {0}, scope {1}.", itemId, scope);
+            Service.PluginLog.Error(ex, "Failed to retrieve data from Universalis for itemIds {0}, scope {1}.", itemId, scope);
             return null;
         }
     }

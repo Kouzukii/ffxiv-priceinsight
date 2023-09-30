@@ -11,7 +11,7 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>PriceInsight</AssemblyName>
-		<Version>2.6.0.1</Version>
+		<Version>2.6.1.0</Version>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->
@@ -54,9 +54,6 @@
 		<Reference Include="ImGui.NET">
 			<Private>false</Private>
 		</Reference>
-		<Reference Include="ImGuiScene">
-			<Private>false</Private>
-		</Reference>
 		<Reference Include="Lumina">
 			<Private>False</Private>
 		</Reference>
@@ -70,7 +67,7 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.11" />
+		<PackageReference Include="DalamudPackager" Version="2.1.12" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="System.Runtime.Caching" Version="7.0.0" />

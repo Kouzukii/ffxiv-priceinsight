@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Threading.Tasks;
-using Dalamud.Logging;
 using Lumina.Excel.GeneratedSheets;
 
 namespace PriceInsight;
@@ -103,7 +102,7 @@ public class ItemPriceLookup : IDisposable {
                 plugin.ItemPriceTooltip.Refresh(result);
             else 
                 plugin.ItemPriceTooltip.FetchFailed(itemIds);
-            PluginLog.Debug($"Fetching {itemIds.Count} items took {(DateTime.Now - fetchStart).TotalMilliseconds:F0}ms");
+            Service.PluginLog.Debug($"Fetching {itemIds.Count} items took {(DateTime.Now - fetchStart).TotalMilliseconds:F0}ms");
             return result;
         });
 

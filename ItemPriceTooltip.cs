@@ -4,9 +4,7 @@ using System.Numerics;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
-using Dalamud.Interface;
-using Dalamud.Logging;
-using FFXIVClientStructs.FFXIV.Client.Graphics;
+using Dalamud.Interface.Utility;
 using FFXIVClientStructs.FFXIV.Client.System.Memory;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
@@ -79,7 +77,7 @@ public class ItemPriceTooltip : IDisposable {
             priceNode->AtkResNode.NodeID = NodeId;
             priceNode->AtkResNode.NodeFlags = NodeFlags.AnchorLeft | NodeFlags.AnchorTop;
             priceNode->AtkResNode.DrawFlags = 0;
-            priceNode->AtkResNode.X = 17;
+            priceNode->AtkResNode.X = 16;
             priceNode->AtkResNode.Width = 50;
             priceNode->AtkResNode.Color = baseNode->AtkResNode.Color;
             priceNode->TextColor = baseNode->TextColor;
@@ -311,7 +309,7 @@ public class ItemPriceTooltip : IDisposable {
                         UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
                     }
                 } catch (Exception e) {
-                    PluginLog.Error(e, "Failed to update tooltip");
+                    Service.PluginLog.Error(e, "Failed to update tooltip");
                 }
             });
         }
@@ -330,7 +328,7 @@ public class ItemPriceTooltip : IDisposable {
                     UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
                 }
             } catch (Exception e) {
-                PluginLog.Error(e, "Failed to update tooltip");
+                Service.PluginLog.Error(e, "Failed to update tooltip");
             }
         });
     }
