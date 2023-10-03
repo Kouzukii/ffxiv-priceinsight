@@ -72,7 +72,7 @@ public class ItemPriceTooltip : IDisposable {
             var baseNode = itemTooltip->GetTextNodeById(43);
             if (baseNode == null)
                 return;
-            priceNode = IMemorySpace.GetUISpace()->Create<AtkTextNode>();
+            priceNode = (AtkTextNode*)itemTooltip->UldManager.CreateAtkNode(NodeType.Text);
             priceNode->AtkResNode.Type = NodeType.Text;
             priceNode->AtkResNode.NodeID = NodeId;
             priceNode->AtkResNode.NodeFlags = NodeFlags.AnchorLeft | NodeFlags.AnchorTop;
