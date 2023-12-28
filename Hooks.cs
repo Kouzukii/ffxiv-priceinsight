@@ -38,7 +38,7 @@ public class Hooks : IDisposable {
     }
 
     public void Dispose() {
-        agentItemDetailOnItemHovered.Disable();
+        agentItemDetailOnItemHovered.Dispose();
     }
 
 }

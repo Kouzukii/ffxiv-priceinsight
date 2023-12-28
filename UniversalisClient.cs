@@ -3,25 +3,49 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Lumina.Excel.GeneratedSheets;
 
 namespace PriceInsight;
 
-public sealed class UniversalisClient : IDisposable {
-    private readonly HttpClient httpClient =
-        new(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All }) {
-            Timeout = TimeSpan.FromMilliseconds(60000)
-        };
+public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
+    private HttpClient httpClient = CreateHttpClient(plugin.Configuration.ForceIpv4);
 
-    private const string RequiredFields = "lastUploadTime,listings.pricePerUnit,listings.hq,listings.worldID,listings.lastReviewTime,recentHistory.pricePerUnit,recentHistory.hq,recentHistory.worldID,recentHistory.timestamp,averagePriceNQ,averagePriceHQ,nqSaleVelocity,hqSaleVelocity,regionName,dcName,worldName";
-    private const string RequiredFieldsMulti = "items.lastUploadTime,items.listings.pricePerUnit,items.listings.hq,items.listings.worldID,items.listings.lastReviewTime,items.recentHistory.pricePerUnit,items.recentHistory.hq,items.recentHistory.worldID,items.recentHistory.timestamp,items.averagePriceNQ,items.averagePriceHQ,items.nqSaleVelocity,items.hqSaleVelocity,items.regionName,items.dcName,items.worldName";
+    private const string RequiredFields = "lastUploadTime,listings.pricePerUnit,listings.hq,listings.worldID,recentHistory.pricePerUnit,recentHistory.hq,recentHistory.worldID,recentHistory.timestamp,averagePriceNQ,averagePriceHQ,nqSaleVelocity,hqSaleVelocity,regionName,dcName,worldName,worldUploadTimes";
+    private const string RequiredFieldsMulti = "items.lastUploadTime,items.listings.pricePerUnit,items.listings.hq,items.listings.worldID,items.recentHistory.pricePerUnit,items.recentHistory.hq,items.recentHistory.worldID,items.recentHistory.timestamp,items.averagePriceNQ,items.averagePriceHQ,items.nqSaleVelocity,items.hqSaleVelocity,items.regionName,items.dcName,items.worldName,items.worldUploadTimes";
 
     internal static readonly Dictionary<uint, (string Name, uint Dc, string DcName)> WorldLookup = Service.DataManager.GetExcelSheet<World>()!.Where(w => w.IsPublic)
         .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Row, w.DataCenter.Value!.Name.RawString));
 
+    private static HttpClient CreateHttpClient(bool forceIpv4) {
+        return new HttpClient(new SocketsHttpHandler {
+            AutomaticDecompression = DecompressionMethods.All,
+            ConnectCallback = forceIpv4
+                // taken from https://github.com/dotnet/runtime/blob/b4ba5da5a0b8e0c7e3027a695f2acb2d9d19137b/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpConnectionPool.cs#L1621C47-L1621C47
+                // with DNS resolution fixed to Ipv4
+                ? async (context, token) => {
+                    var entry = await Dns.GetHostEntryAsync(context.DnsEndPoint.Host, AddressFamily.InterNetwork, token);
+                    var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+                    try {
+                        await socket.ConnectAsync(entry.AddressList, context.DnsEndPoint.Port, token).ConfigureAwait(false);
+                        return new NetworkStream(socket, ownsSocket: true);
+                    } catch {
+                        socket.Dispose();
+                        throw;
+                    }
+                }
+                : null
+        }) { Timeout = TimeSpan.FromSeconds(60) };
+    }
+
+    public void ForceIpv4(bool force) {
+        var oldHttpClient = httpClient;
+        httpClient = CreateHttpClient(force);
+        oldHttpClient.Dispose();
+    }
+    
     public void Dispose() {
         httpClient.Dispose();
     }
@@ -85,13 +109,12 @@ public sealed class UniversalisClient : IDisposable {
     private MarketBoardData ParseMarketBoardData(ItemData item, uint worldId) {
         var dc = WorldLookup[worldId].Dc;
         var marketBoardData = new MarketBoardData {
-            LastUploadTime = item.lastUploadTime,
-            MinimumPriceNQ = item.listings?.FirstOrDefault(l => !l.hq && l.IsDatacenter(dc)),
-            MinimumPriceHQ = item.listings?.FirstOrDefault(l => l.hq && l.IsDatacenter(dc)),
-            OwnMinimumPriceNQ = item.listings?.FirstOrDefault(l => !l.hq && l.IsHomeWorld(worldId)),
-            OwnMinimumPriceHQ = item.listings?.FirstOrDefault(l => l.hq && l.IsHomeWorld(worldId)),
-            RegionMinimumPriceNQ = item.listings?.FirstOrDefault(l => !l.hq),
-            RegionMinimumPriceHQ = item.listings?.FirstOrDefault(l => l.hq),
+            MinimumPriceNQ = item.listings?.FirstOrDefault(l => !l.hq && l.IsDatacenter(dc))?.WithUploadTime(item),
+            MinimumPriceHQ = item.listings?.FirstOrDefault(l => l.hq && l.IsDatacenter(dc))?.WithUploadTime(item),
+            OwnMinimumPriceNQ = item.listings?.FirstOrDefault(l => !l.hq && l.IsHomeWorld(worldId))?.WithUploadTime(item),
+            OwnMinimumPriceHQ = item.listings?.FirstOrDefault(l => l.hq && l.IsHomeWorld(worldId))?.WithUploadTime(item),
+            RegionMinimumPriceNQ = item.listings?.FirstOrDefault(l => !l.hq)?.WithUploadTime(item),
+            RegionMinimumPriceHQ = item.listings?.FirstOrDefault(l => l.hq)?.WithUploadTime(item),
             MostRecentPurchaseNQ = item.recentHistory?.FirstOrDefault(l => !l.hq && l.IsDatacenter(dc)),
             MostRecentPurchaseHQ = item.recentHistory?.FirstOrDefault(l => l.hq && l.IsDatacenter(dc)),
             OwnMostRecentPurchaseNQ = item.recentHistory?.FirstOrDefault(l => !l.hq && l.IsHomeWorld(worldId)),
@@ -116,8 +139,7 @@ class UniversalisData {
 }
 
 class ItemData {
-    [JsonConverter(typeof(UnixMilliDateTimeConverter))]
-    public DateTime? lastUploadTime { get; set; }
+    public UnixMilliDateTime? lastUploadTime { get; set; }
 
     public List<ListingData>? listings { get; set; }
     public List<RecentData>? recentHistory { get; set; }
@@ -128,14 +150,12 @@ class ItemData {
     public string? regionName { get; set; }
     public string? dcName { get; set; }
     public string? worldName { get; set; }
+    public Dictionary<uint, UnixMilliDateTime>? worldUploadTimes { get; set; }
 
     public class ListingData {
         public long pricePerUnit { get; set; }
         public bool hq { get; set; }
         public uint? worldID { get; set; }
-
-        [JsonConverter(typeof(UnixSecondsDateTimeConverter))]
-        public DateTime lastReviewTime { get; set; }
 
         public bool IsHomeWorld(uint homeWorld) {
             if (worldID == null) // Entry was obtained by searching for prices in the homeWorld
@@ -149,13 +169,12 @@ class ItemData {
             return UniversalisClient.WorldLookup[worldID.Value].Dc == dc;
         }
 
-        public static implicit operator Listing?(ListingData? data) {
-            if (data == null)
-                return null;
-            var world = data.worldID != null ? UniversalisClient.WorldLookup[data.worldID.Value] : default;
+        public Listing WithUploadTime(ItemData data) {
+            var world = worldID != null ? UniversalisClient.WorldLookup[worldID.Value] : default;
+            var time = worldID != null ? data.worldUploadTimes?[worldID.Value] : data.lastUploadTime;
             return new Listing {
-                Price = data.pricePerUnit,
-                Time = data.lastReviewTime,
+                Price = pricePerUnit,
+                Time = time,
                 World = world.Name,
                 Datacenter = world.DcName
             };
@@ -166,9 +185,7 @@ class ItemData {
         public bool hq { get; set; }
         public long pricePerUnit { get; set; }
         public uint? worldID { get; set; }
-
-        [JsonConverter(typeof(UnixSecondsDateTimeConverter))]
-        public DateTime timestamp { get; set; }
+        public UnixSecondDateTime timestamp { get; set; }
 
         public bool IsHomeWorld(uint homeWorld) {
             if (worldID == null) // Entry was obtained by searching for prices in the homeWorld

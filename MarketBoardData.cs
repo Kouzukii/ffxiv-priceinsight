@@ -3,7 +3,6 @@ using System;
 namespace PriceInsight; 
 
 public record MarketBoardData {
-    public required DateTime? LastUploadTime { get; init; }
     public required Listing? MinimumPriceNQ { get; init; }
     public required Listing? MinimumPriceHQ { get; init; }
     public required Listing? OwnMinimumPriceNQ { get; init; }
@@ -29,5 +28,5 @@ public record Listing {
     public required long Price { get; init; }
     public required string? World { get; init; }
     public required string? Datacenter { get; init; }
-    public required DateTime Time { get; init; }
+    public required DateTime? Time { get; init; }
 }

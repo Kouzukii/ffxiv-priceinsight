@@ -39,7 +39,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
         Configuration = Configuration.Get(pluginInterface);
 
-        UniversalisClient = new UniversalisClient();
+        UniversalisClient = new UniversalisClient(this);
         ItemPriceLookup = new ItemPriceLookup(this);
         ItemPriceTooltip = new ItemPriceTooltip(this);
         Hooks = new Hooks(this);

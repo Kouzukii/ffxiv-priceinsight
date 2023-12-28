@@ -51,6 +51,15 @@ class ConfigUI : IDisposable {
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("The current world you're on will be considered your \"home world\".\nUseful if you're datacenter travelling and want to see prices there.");
 
+            configValue = conf.ForceIpv4;
+            if (ImGui.Checkbox("Force Ipv4 when connecting to universalis", ref configValue)) {
+                conf.ForceIpv4 = configValue;
+                conf.Save();
+                plugin.UniversalisClient.ForceIpv4(configValue);
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("May be required when connecting through a VPN.\nIf you're experiencing connection issues try enabling this.");
+
             ImGui.Separator();
             ImGui.PushID(0);
             

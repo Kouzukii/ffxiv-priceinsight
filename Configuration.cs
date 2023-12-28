@@ -37,6 +37,8 @@ public class Configuration : IPluginConfiguration {
     public bool ShowDatacenterOnCrossWorlds { get; set; } = true;
 
     public bool ShowBothNqAndHq { get; set; } = true;
+    
+    public bool ForceIpv4 { get; set; } = false;
 
     // the below exist just to make saving less cumbersome
 
