@@ -10,8 +10,8 @@ using Lumina.Excel.GeneratedSheets;
 
 namespace PriceInsight;
 
-public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
-    private HttpClient httpClient = CreateHttpClient(plugin.Configuration.ForceIpv4);
+public sealed class UniversalisClient : IDisposable {
+    private HttpClient httpClient;
 
     private const string RequiredFields = "lastUploadTime,listings.pricePerUnit,listings.hq,listings.worldID,recentHistory.pricePerUnit,recentHistory.hq,recentHistory.worldID,recentHistory.timestamp,averagePriceNQ,averagePriceHQ,nqSaleVelocity,hqSaleVelocity,regionName,dcName,worldName,worldUploadTimes";
     private const string RequiredFieldsMulti = "items.lastUploadTime,items.listings.pricePerUnit,items.listings.hq,items.listings.worldID,items.recentHistory.pricePerUnit,items.recentHistory.hq,items.recentHistory.worldID,items.recentHistory.timestamp,items.averagePriceNQ,items.averagePriceHQ,items.nqSaleVelocity,items.hqSaleVelocity,items.regionName,items.dcName,items.worldName,items.worldUploadTimes";
@@ -19,6 +19,10 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
     internal static readonly Dictionary<uint, (string Name, uint Dc, string DcName)> WorldLookup = Service.DataManager.GetExcelSheet<World>()!.Where(w => w.IsPublic)
         .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Row, w.DataCenter.Value!.Name.RawString));
 
+    public UniversalisClient(PriceInsightPlugin plugin) {
+        httpClient = CreateHttpClient(plugin.Configuration.ForceIpv4);
+    }
+    
     private static HttpClient CreateHttpClient(bool forceIpv4) {
         return new HttpClient(new SocketsHttpHandler {
             AutomaticDecompression = DecompressionMethods.All,
@@ -184,7 +188,7 @@ class ItemData {
         public bool hq { get; set; }
         public long pricePerUnit { get; set; }
         public uint? worldID { get; set; }
-        public UnixSecondDateTime timestamp { get; set; }
+        public UnixSecondDateTime? timestamp { get; set; }
 
         public bool IsHomeWorld(uint homeWorld) {
             if (worldID == null) // Entry was obtained by searching for prices in the homeWorld
