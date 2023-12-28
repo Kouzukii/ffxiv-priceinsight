@@ -24,12 +24,11 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
             AutomaticDecompression = DecompressionMethods.All,
             ConnectCallback = forceIpv4
                 // taken from https://github.com/dotnet/runtime/blob/b4ba5da5a0b8e0c7e3027a695f2acb2d9d19137b/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpConnectionPool.cs#L1621C47-L1621C47
-                // with DNS resolution fixed to Ipv4
+                // with socket fixed to Ipv4
                 ? async (context, token) => {
-                    var entry = await Dns.GetHostEntryAsync(context.DnsEndPoint.Host, AddressFamily.InterNetwork, token);
-                    var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+                    var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
                     try {
-                        await socket.ConnectAsync(entry.AddressList, context.DnsEndPoint.Port, token).ConfigureAwait(false);
+                        await socket.ConnectAsync(context.DnsEndPoint, token).ConfigureAwait(false);
                         return new NetworkStream(socket, ownsSocket: true);
                     } catch {
                         socket.Dispose();
