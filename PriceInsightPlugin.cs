@@ -65,7 +65,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
     private void FrameworkOnUpdate(IFramework framework) {
         if (ItemPriceLookup.NeedsClearing)
             ClearCache();
-        if (Service.ClientState.LocalContentId == 0 || !ItemPriceLookup.IsReady)
+        if (Service.ClientState.LocalContentId == 0 || !ItemPriceLookup.CheckReady())
             return;
         if(!Configuration.PrefetchInventory) 
             return;
@@ -87,11 +87,11 @@ public class PriceInsightPlugin : IDalamudPlugin {
                             continue;
                         }
 
-                        items.Add(itemId % 500000);
+                        items.Add(itemId);
                         empty = false;
 
                         if (items.Count >= 50) {
-                            ItemPriceLookup.Fetch(items, false);
+                            ItemPriceLookup.Fetch(items);
                             items.Clear();
                         }
                     }
@@ -106,7 +106,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
                 }
 
                 if (items.Count > 0) {
-                    ItemPriceLookup.Fetch(items, false);
+                    ItemPriceLookup.Fetch(items);
                 }
             }
         } catch (Exception e) {

@@ -40,12 +40,8 @@ public class ItemPriceTooltip : IDisposable {
     }
 
     public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
-        if (Service.GameGui.HoveredItem is >= 2000000 or >= 500000 and < 1000000) {
-            return;
-        }
-
         var refresh = plugin.Configuration.RefreshWithAlt && Service.KeyState[VirtualKey.MENU];
-        var (marketBoardData, lookupState) = plugin.ItemPriceLookup.Get((uint)(Service.GameGui.HoveredItem % 500000), refresh);
+        var (marketBoardData, lookupState) = plugin.ItemPriceLookup.Get(Service.GameGui.HoveredItem, refresh);
         var payloads = ParseMbData(Service.GameGui.HoveredItem >= 500000, marketBoardData, lookupState);
 
         UpdateItemTooltip(itemTooltip, payloads);
@@ -126,12 +122,8 @@ public class ItemPriceTooltip : IDisposable {
         } else {
             var ownWorld = mbData.HomeWorld;
             var ownDc = mbData.HomeDatacenter;
-            var minWorld = hq 
-                ? mbData.MinimumPriceHQ?.World ?? mbData.MinimumPriceNQ?.World 
-                : mbData.MinimumPriceNQ?.World ?? mbData.MinimumPriceHQ?.World;
-            var minDc = hq
-                ? mbData.RegionMinimumPriceHQ?.Datacenter ?? mbData.RegionMinimumPriceNQ?.Datacenter
-                : mbData.RegionMinimumPriceNQ?.Datacenter ?? mbData.RegionMinimumPriceHQ?.Datacenter;
+            var minWorld = GetNqHqData(mbData.MinimumPriceNQ?.World, mbData.MinimumPriceHQ?.World);
+            var minDc = GetNqHqData(mbData.RegionMinimumPriceNQ?.Datacenter, mbData.RegionMinimumPriceHQ?.Datacenter);
             
             var priceHeader = false;
             void PriceHeader() {
@@ -171,7 +163,14 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new UIForegroundPayload(0));
             }
 
-            if (plugin.Configuration.ShowRegion && minDc != ownDc) {
+            T? GetNqHqData<T>(T? nqData, T? hqData) {
+                var result = hq ? hqData : nqData;
+                if (plugin.Configuration.ShowBothNqAndHq)
+                    result ??= hq ? nqData : hqData;
+                return result;
+            }
+
+            if (minDc != ownDc && minDc != null && plugin.Configuration.ShowRegion) {
                 PriceHeader();
 
                 var minWorldRegion = hq 
@@ -192,7 +191,7 @@ public class ItemPriceTooltip : IDisposable {
                 }
             }
 
-            if (minWorld != ownWorld && (plugin.Configuration.ShowDatacenter || (plugin.Configuration.ShowRegion && minDc == ownDc))) {
+            if (minWorld != ownWorld && minWorld != null && (plugin.Configuration.ShowDatacenter || (plugin.Configuration.ShowRegion && minDc == ownDc))) {
                 PriceHeader();
 
                 payloads.Add(new TextPayload("\n  Cheapest ("));
@@ -206,7 +205,7 @@ public class ItemPriceTooltip : IDisposable {
                 }
             }
 
-            if ((mbData.OwnMinimumPriceHQ != null || mbData.OwnMinimumPriceNQ != null) && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
+            if (GetNqHqData(mbData.OwnMinimumPriceNQ,  mbData.OwnMinimumPriceHQ) != null && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
                 PriceHeader();
                 
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
@@ -227,9 +226,9 @@ public class ItemPriceTooltip : IDisposable {
                 recentHeader = true;
             }
             
-            var recentWorld = hq ? mbData.MostRecentPurchaseHQ?.World : mbData.MostRecentPurchaseNQ?.World;
-            var recentDc = hq ? mbData.RegionMostRecentPurchaseHQ?.Datacenter : mbData.RegionMostRecentPurchaseNQ?.Datacenter;
-            if (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc != ownDc) {
+            var recentWorld = GetNqHqData(mbData.MostRecentPurchaseNQ?.World, mbData.MostRecentPurchaseHQ?.World);
+            var recentDc = GetNqHqData(mbData.RegionMostRecentPurchaseNQ?.Datacenter, mbData.RegionMostRecentPurchaseHQ?.Datacenter);
+            if (recentDc != ownDc && recentDc != null && plugin.Configuration.ShowMostRecentPurchaseRegion) {
                 RecentHeader();
 
                 var recentWorldRegion = hq
@@ -247,7 +246,7 @@ public class ItemPriceTooltip : IDisposable {
                 }
             }
 
-            if (recentWorld != null && recentWorld != ownWorld && (plugin.Configuration.ShowMostRecentPurchase || (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc == ownDc))) {
+            if (recentWorld != ownWorld && recentWorld != null && (plugin.Configuration.ShowMostRecentPurchase || (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc == ownDc))) {
                 RecentHeader();
 
                 payloads.Add(new TextPayload("\n  Cheapest ("));
@@ -261,8 +260,7 @@ public class ItemPriceTooltip : IDisposable {
                 }
             }
 
-            if ((mbData.OwnMostRecentPurchaseHQ != null || mbData.OwnMostRecentPurchaseNQ != null) 
-                && (plugin.Configuration.ShowMostRecentPurchaseWorld || (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownWorld))) {
+            if (GetNqHqData(mbData.OwnMostRecentPurchaseNQ, mbData.OwnMostRecentPurchaseHQ) != null && (plugin.Configuration.ShowMostRecentPurchaseWorld || (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownWorld))) {
                 RecentHeader();
 
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
@@ -274,18 +272,24 @@ public class ItemPriceTooltip : IDisposable {
                 }
             }
 
-            if ((mbData.AverageSalePriceNQ != null || mbData.AverageSalePriceHQ != null) && plugin.Configuration.ShowAverageSalePrice) {
+            if (GetNqHqData(mbData.AverageSalePriceNQ, mbData.AverageSalePriceHQ) != null && plugin.Configuration.ShowAverageSalePrice) {
                 if (payloads.Count > 0)
                     payloads.Add(new TextPayload("\n"));
                 payloads.Add(new TextPayload($"Average sale price ({mbData.Scope}): "));
                 PrintNqHq(mbData.AverageSalePriceNQ, mbData.AverageSalePriceHQ);
             }
 
-            if ((mbData.DailySaleVelocityNQ != null || mbData.DailySaleVelocityHQ != null) && plugin.Configuration.ShowDailySaleVelocity) {
+            if (GetNqHqData(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ) != null && plugin.Configuration.ShowDailySaleVelocity) {
                 if (payloads.Count > 0)
                     payloads.Add(new TextPayload("\n"));
                 payloads.Add(new TextPayload($"Sales per day ({mbData.Scope}): "));
                 PrintNqHq(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ, format: "N1", withGilIcon: false);
+            }
+
+            if (payloads.Count == 0) {
+                payloads.Add(new UIForegroundPayload(20));
+                payloads.Add(new TextPayload("No marketboard info is known for this item.\nTry opening the ingame marketboard."));
+                payloads.Add(new UIForegroundPayload(0));
             }
         }
 

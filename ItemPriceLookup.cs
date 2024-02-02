@@ -1,17 +1,20 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Caching;
 using System.Threading.Tasks;
+using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace PriceInsight;
 
 public class ItemPriceLookup : IDisposable {
     private readonly PriceInsightPlugin plugin;
-    private readonly MemoryCache cache = new("itemDb");
+    private readonly MemoryCache cache = new(new MemoryCacheOptions());
     private World? homeWorld;
     private readonly HashSet<uint> requestedItems = new();
+    private readonly ConcurrentDictionary<uint, Task> activeTasks = new();
     private DateTime lastRequest = DateTime.UnixEpoch;
     private readonly Dictionary<byte, string> regions = new() { { 1, "Japan" }, { 2, "North-America" }, { 3, "Europe" }, { 4, "Oceania" } };
 
@@ -19,16 +22,14 @@ public class ItemPriceLookup : IDisposable {
         this.plugin = plugin;
     }
 
-    public bool IsReady {
-        get {
-            if (plugin.Configuration.UseCurrentWorld) {
-                homeWorld ??= Service.ClientState.LocalPlayer?.CurrentWorld.GameData;
-            } else {
-                homeWorld ??= Service.ClientState.LocalPlayer?.HomeWorld.GameData;
-            }
-
-            return homeWorld != null;
+    public bool CheckReady() {
+        if (plugin.Configuration.UseCurrentWorld) {
+            homeWorld ??= Service.ClientState.LocalPlayer?.CurrentWorld.GameData;
+        } else {
+            homeWorld ??= Service.ClientState.LocalPlayer?.HomeWorld.GameData;
         }
+
+        return homeWorld != null;
     }
 
     public bool NeedsClearing {
@@ -41,20 +42,19 @@ public class ItemPriceLookup : IDisposable {
         }
     }
 
-    public (MarketBoardData? MarketBoardData, LookupState State) Get(uint itemId, bool refresh) {
-        if (!refresh) {
-            var key = itemId.ToString();
-            var item = (Task<MarketBoardData?>?)cache[key];
-            if (item != null)
-                return (
-                    item.IsCompleted ? item.Result : null, 
-                    item is { IsCompleted: true, Result: null } ? LookupState.Faulted : LookupState.Marketable
-                );
+    public (MarketBoardData? MarketBoardData, LookupState State) Get(ulong fullItemId, bool refresh) {
+        if (!ToMarketableItemId(fullItemId, out var itemId))
+            return (null, LookupState.NonMarketable);
+
+        if (refresh) {
+            cache.Remove(itemId);
+        } else {
+            if (cache.Get<MarketBoardData>(itemId) is { } mbData)
+                return (mbData, LookupState.Marketable);
+            if (activeTasks.TryGetValue(itemId, out var task))
+                return (null, task.IsFaulted ? LookupState.Faulted : LookupState.Marketable);
         }
 
-        var itemData = Service.DataManager.Excel.GetSheet<Item>()?.GetRow(itemId);
-        if (itemData != null && itemData.ItemSearchCategory.Row == 0)
-            return (null, LookupState.NonMarketable);
         // Don't spam universalis with requests
         if ((DateTime.Now - lastRequest).TotalMilliseconds < 500) {
             lock (requestedItems) {
@@ -62,7 +62,7 @@ public class ItemPriceLookup : IDisposable {
                     Task.Run(BufferFetch);
             }
         } else {
-            Fetch(new[] { itemId }, true);
+            FetchInternal(new[] { itemId });
         }
 
         lastRequest = DateTime.Now;
@@ -73,42 +73,64 @@ public class ItemPriceLookup : IDisposable {
     private async void BufferFetch() {
         await Task.Delay(500);
         lock (requestedItems) {
-            Fetch(requestedItems, false);
+            Fetch(requestedItems);
             requestedItems.Clear();
         }
     }
 
-    public void Fetch(IEnumerable<uint> items, bool skipCheck) {
-        if (Scope() is not { } scope || homeWorld?.RowId is not { } homeWorldId)
-            return;
+    private static bool ToMarketableItemId(ulong fullItemId, out uint itemId, ExcelSheet<Item>? sheet = null) {
+        itemId = (uint)(fullItemId % 500000);
+        if (fullItemId is >= 2000000 or >= 500000 and < 1000000)
+            return false;
+        sheet ??= Service.DataManager.Excel.GetSheet<Item>();
+        return sheet?.GetRow(itemId) is not null and not { ItemSearchCategory.Row: 0 };
+    }
 
+    private IEnumerable<uint> FilterItemsToFetch(IEnumerable<uint> items) {
         var itemSheet = Service.DataManager.Excel.GetSheet<Item>();
-        var itemIds = skipCheck
-            ? items.ToList()
-            : (from id in items
-                let item = (Task<MarketBoardData?>?)cache[id.ToString()]
-                where item is null or { IsCompleted: true, Result: null }
-                let itemData = itemSheet?.GetRow(id)
-                where itemData != null && itemData.ItemSearchCategory.Row != 0
-                select id).ToList();
+        foreach (var id in items) {
+            if (cache.Get(id) != null || (activeTasks.TryGetValue(id, out var task) && !task.IsFaulted))
+                continue;
+
+            if (ToMarketableItemId(id, out var itemId, itemSheet))
+                yield return itemId;
+        }
+    }
+
+    public void Fetch(IEnumerable<uint> items) {
+        var itemIds = FilterItemsToFetch(items).Distinct().ToList();
 
         if (itemIds.Count == 0)
             return;
+        
+        FetchInternal(itemIds);
+    }
 
-        var itemTask = Task.Run(async () => {
+    private void FetchInternal(IList<uint> itemIds) {
+        var itemTask = FetchItemTask();
+
+        foreach (var id in itemIds) {
+            activeTasks[id] = Task.Run(async () => {
+                var items = await itemTask;
+                if (items != null && items.TryGetValue(id, out var value))
+                    cache.Set(id, value, TimeSpan.FromMinutes(90));
+                activeTasks.TryRemove(id, out _);
+            });
+        }
+
+        return;
+
+        async Task<Dictionary<uint, MarketBoardData>?> FetchItemTask() {
+            if (Scope() is not { } scope || homeWorld?.RowId is not { } homeWorldId)
+                return null;
             var fetchStart = DateTime.Now;
             var result = await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds);
             if (result != null)
                 plugin.ItemPriceTooltip.Refresh(result);
-            else 
+            else
                 plugin.ItemPriceTooltip.FetchFailed(itemIds);
             Service.PluginLog.Debug($"Fetching {itemIds.Count} items took {(DateTime.Now - fetchStart).TotalMilliseconds:F0}ms");
             return result;
-        });
-
-        foreach (var id in itemIds) {
-            cache.Set(id.ToString(), itemTask.ContinueWith(task => task.Result?.GetValueOrDefault(id), TaskContinuationOptions.OnlyOnRanToCompletion),
-                DateTimeOffset.Now.AddMinutes(90));
         }
     }
 
