@@ -9,18 +9,13 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace PriceInsight;
 
-public class ItemPriceLookup : IDisposable {
-    private readonly PriceInsightPlugin plugin;
+public class ItemPriceLookup(PriceInsightPlugin plugin) : IDisposable {
     private readonly MemoryCache cache = new(new MemoryCacheOptions());
     private World? homeWorld;
     private readonly HashSet<uint> requestedItems = new();
     private readonly ConcurrentDictionary<uint, Task> activeTasks = new();
     private DateTime lastRequest = DateTime.UnixEpoch;
     private readonly Dictionary<byte, string> regions = new() { { 1, "Japan" }, { 2, "North-America" }, { 3, "Europe" }, { 4, "Oceania" } };
-
-    public ItemPriceLookup(PriceInsightPlugin plugin) {
-        this.plugin = plugin;
-    }
 
     public bool CheckReady() {
         if (plugin.Configuration.UseCurrentWorld) {
@@ -102,7 +97,7 @@ public class ItemPriceLookup : IDisposable {
 
         if (itemIds.Count == 0)
             return;
-        
+
         FetchInternal(itemIds);
     }
 

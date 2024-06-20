@@ -2,11 +2,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup Label="Target">
 		<PlatformTarget>x64</PlatformTarget>
-		<TargetFramework>net7.0-windows</TargetFramework>
+		<TargetFramework>net8.0-windows</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<Platforms>x64</Platforms>
 		<Configurations>Debug;Release</Configurations>
-		<LangVersion>11</LangVersion>
+		<LangVersion>12</LangVersion>
 	</PropertyGroup>
 
 	<!-- Assembly Configuration -->

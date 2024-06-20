@@ -10,17 +10,12 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace PriceInsight;
 
-public class ItemPriceTooltip : IDisposable {
-    private readonly PriceInsightPlugin plugin;
+public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
     private const int NodeId = 32612;
     private const char HQIcon = '';
     private const char GilIcon = '';
 
     public int? LastItemQuantity;
-
-    public ItemPriceTooltip(PriceInsightPlugin plugin) {
-        this.plugin = plugin;
-    }
 
     public static unsafe void RestoreToNormal(AtkUnitBase* itemTooltip) {
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
