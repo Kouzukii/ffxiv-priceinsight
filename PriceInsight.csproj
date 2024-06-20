@@ -12,7 +12,7 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>PriceInsight</AssemblyName>
-		<Version>2.8.0.0</Version>
+		<Version>2.8.0.1</Version>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->
@@ -71,7 +71,7 @@
 		<PackageReference Include="DalamudPackager" Version="2.1.12" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="7.0.0" />
 	</ItemGroup>
-	
+
 	<ItemGroup>
 	  <Folder Include="images" />
 	</ItemGroup>

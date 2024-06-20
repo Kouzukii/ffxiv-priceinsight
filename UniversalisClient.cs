@@ -20,7 +20,6 @@ public sealed class UniversalisClient : IDisposable {
         "items.lastUploadTime,items.listings.pricePerUnit,items.listings.hq,items.listings.worldID,items.recentHistory.pricePerUnit,items.recentHistory.hq,items.recentHistory.worldID,items.recentHistory.timestamp,items.averagePriceNQ,items.averagePriceHQ,items.nqSaleVelocity,items.hqSaleVelocity,items.regionName,items.dcName,items.worldName,items.worldUploadTimes";
 
     internal static readonly Dictionary<uint, (string Name, uint Dc, string DcName)> WorldLookup = Service.DataManager.GetExcelSheet<World>()!
-        .Where(w => w.IsPublic)
         .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Row, w.DataCenter.Value!.Name.RawString));
 
     public UniversalisClient(PriceInsightPlugin plugin) {

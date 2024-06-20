@@ -51,7 +51,7 @@ public class ItemPriceTooltip : IDisposable {
         if (payloads.Count == 0) {
             return;
         }
-        
+
         AtkTextNode* priceNode = null;
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
             var node = itemTooltip->UldManager.NodeList[i];
@@ -124,7 +124,7 @@ public class ItemPriceTooltip : IDisposable {
             var ownDc = mbData.HomeDatacenter;
             var minWorld = GetNqHqData(mbData.MinimumPriceNQ?.World, mbData.MinimumPriceHQ?.World);
             var minDc = GetNqHqData(mbData.RegionMinimumPriceNQ?.Datacenter, mbData.RegionMinimumPriceHQ?.Datacenter);
-            
+
             var priceHeader = false;
             void PriceHeader() {
                 if (priceHeader) return;
@@ -173,8 +173,8 @@ public class ItemPriceTooltip : IDisposable {
             if (minDc != ownDc && minDc != null && plugin.Configuration.ShowRegion) {
                 PriceHeader();
 
-                var minWorldRegion = hq 
-                    ? mbData.RegionMinimumPriceHQ?.World ?? mbData.RegionMinimumPriceNQ?.World 
+                var minWorldRegion = hq
+                    ? mbData.RegionMinimumPriceHQ?.World ?? mbData.RegionMinimumPriceNQ?.World
                     : mbData.RegionMinimumPriceNQ?.World ?? mbData.RegionMinimumPriceHQ?.World;
 
                 payloads.Add(new TextPayload("\n  Cheapest ("));
@@ -207,7 +207,7 @@ public class ItemPriceTooltip : IDisposable {
 
             if (GetNqHqData(mbData.OwnMinimumPriceNQ,  mbData.OwnMinimumPriceHQ) != null && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
                 PriceHeader();
-                
+
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
                 PrintNqHq(mbData.OwnMinimumPriceNQ?.Price, mbData.OwnMinimumPriceHQ?.Price);
 
@@ -225,7 +225,7 @@ public class ItemPriceTooltip : IDisposable {
                 payloads.Add(new TextPayload("Most Recent Purchase:"));
                 recentHeader = true;
             }
-            
+
             var recentWorld = GetNqHqData(mbData.MostRecentPurchaseNQ?.World, mbData.MostRecentPurchaseHQ?.World);
             var recentDc = GetNqHqData(mbData.RegionMostRecentPurchaseNQ?.Datacenter, mbData.RegionMostRecentPurchaseHQ?.Datacenter);
             if (recentDc != ownDc && recentDc != null && plugin.Configuration.ShowMostRecentPurchaseRegion) {
