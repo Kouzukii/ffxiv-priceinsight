@@ -20,7 +20,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
     public static unsafe void RestoreToNormal(AtkUnitBase* itemTooltip) {
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
             var n = itemTooltip->UldManager.NodeList[i];
-            if (n->NodeID != NodeId || !n->IsVisible)
+            if (n->NodeId != NodeId || !n->IsVisible())
                 continue;
             n->ToggleVisibility(false);
             var insertNode = itemTooltip->GetNodeById(2);
@@ -50,7 +50,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         AtkTextNode* priceNode = null;
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
             var node = itemTooltip->UldManager.NodeList[i];
-            if (node == null || node->NodeID != NodeId)
+            if (node == null || node->NodeId != NodeId)
                 continue;
             priceNode = (AtkTextNode*)node;
             break;
@@ -65,7 +65,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 return;
             priceNode = IMemorySpace.GetUISpace()->Create<AtkTextNode>();
             priceNode->AtkResNode.Type = NodeType.Text;
-            priceNode->AtkResNode.NodeID = NodeId;
+            priceNode->AtkResNode.NodeId = NodeId;
             priceNode->AtkResNode.NodeFlags = NodeFlags.AnchorLeft | NodeFlags.AnchorTop;
             priceNode->AtkResNode.X = 16;
             priceNode->AtkResNode.Width = 50;
@@ -339,7 +339,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 var node = atkUnitBase->UldManager.NodeList[n];
                 if (node == null)
                     continue;
-                if (node->NodeID != NodeId)
+                if (node->NodeId != NodeId)
                     continue;
                 if (node->ParentNode != null && node->ParentNode->ChildNode == node)
                     node->ParentNode->ChildNode = node->PrevSiblingNode;

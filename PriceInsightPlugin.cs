@@ -67,7 +67,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
             ClearCache();
         if (Service.ClientState.LocalContentId == 0 || !ItemPriceLookup.CheckReady())
             return;
-        if(!Configuration.PrefetchInventory) 
+        if(!Configuration.PrefetchInventory)
             return;
         try {
             unsafe {
@@ -82,7 +82,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
                     var empty = true;
                     for (var i = 0; i < container->Size; i++) {
                         var item = &container->Items[i];
-                        var itemId = item->ItemID;
+                        var itemId = item->ItemId;
                         if (itemId == 0) {
                             continue;
                         }
