@@ -34,7 +34,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
         { InventoryType.RetainerPage7, DateTime.UnixEpoch },
     };
 
-    public PriceInsightPlugin(DalamudPluginInterface pluginInterface) {
+    public PriceInsightPlugin(IDalamudPluginInterface pluginInterface) {
         Service.Initialize(pluginInterface);
 
         Configuration = Configuration.Get(pluginInterface);

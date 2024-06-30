@@ -29,7 +29,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height - n->Height - 4));
             itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
             itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-            insertNode->SetY(insertNode->Y - n->Height - 4);
+            insertNode->SetYFloat(insertNode->Y - n->Height - 4);
             break;
         }
     }
@@ -88,7 +88,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         priceNode->AtkResNode.ToggleVisibility(true);
         priceNode->SetText(new SeString(payloads).Encode());
         priceNode->ResizeNodeForCurrentText();
-        priceNode->AtkResNode.SetY(itemTooltip->WindowNode->AtkResNode.Height - 8);
+        priceNode->AtkResNode.SetYFloat(itemTooltip->WindowNode->AtkResNode.Height - 8);
         itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
         itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
         itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
@@ -97,7 +97,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             plugin.Hooks.ItemDetailSetPositionPreservingOriginal(itemTooltip, itemTooltip->X, (short)(itemTooltip->Y + remainingSpace), 1);
         }
 
-        insertNode->SetY(insertNode->Y + priceNode->AtkResNode.Height + 4);
+        insertNode->SetYFloat(insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
     private List<Payload> ParseMbData(bool hq, MarketBoardData? mbData, LookupState lookupState) {

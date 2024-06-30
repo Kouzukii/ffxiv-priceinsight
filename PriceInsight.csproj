@@ -68,7 +68,7 @@
 
 	<!-- NuGet Packages -->
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="2.1.12" />
+		<PackageReference Include="DalamudPackager" Version="2.1.13" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="7.0.0" />
 	</ItemGroup>
 
