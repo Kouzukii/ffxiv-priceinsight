@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Numerics;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
@@ -16,6 +17,10 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
     private const char GilIcon = '';
 
     public int? LastItemQuantity;
+
+    private static readonly CultureInfo FormatProvider = CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator == "\u2009"
+        ? CultureInfo.InvariantCulture
+        : CultureInfo.CurrentCulture;
 
     public static unsafe void RestoreToNormal(AtkUnitBase* itemTooltip) {
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
@@ -38,7 +43,6 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         var refresh = plugin.Configuration.RefreshWithAlt && Service.KeyState[VirtualKey.MENU];
         var (marketBoardData, lookupState) = plugin.ItemPriceLookup.Get(Service.GameGui.HoveredItem, refresh);
         var payloads = ParseMbData(Service.GameGui.HoveredItem >= 500000, marketBoardData, lookupState);
-
         UpdateItemTooltip(itemTooltip, payloads);
     }
 
@@ -89,10 +93,12 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         priceNode->SetText(new SeString(payloads).Encode());
         priceNode->ResizeNodeForCurrentText();
         priceNode->AtkResNode.SetYFloat(itemTooltip->WindowNode->AtkResNode.Height - 8);
-        itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
-        itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-        itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-        var remainingSpace = ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - itemTooltip->WindowNode->AtkResNode.Height - 36;
+        itemTooltip->WindowNode->SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
+        itemTooltip->WindowNode->AtkResNode.SetHeight(itemTooltip->WindowNode->Height);
+        itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->Height);
+        itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->Height);
+        itemTooltip->RootNode->SetHeight(itemTooltip->WindowNode->Height);
+        var remainingSpace = ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - itemTooltip->GetScaledHeight(true) - 36;
         if (remainingSpace < 0) {
             plugin.Hooks.ItemDetailSetPositionPreservingOriginal(itemTooltip, itemTooltip->X, (short)(itemTooltip->Y + remainingSpace), 1);
         }
@@ -131,9 +137,9 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 if (nqPrice != null && (plugin.Configuration.ShowBothNqAndHq || !hq)) {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
+                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, FormatProvider)}{(withGilIcon ? GilIcon : "")}"));
                     if (plugin.Configuration.ShowStackSalePrice && !hq && LastItemQuantity > 1 && withGilIcon)
-                        payloads.Add(new TextPayload($" ({(nqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{GilIcon})"));
+                        payloads.Add(new TextPayload($" ({(nqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, FormatProvider)}{GilIcon})"));
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -143,9 +149,9 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
 
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
+                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, FormatProvider)}{(withGilIcon ? GilIcon : "")}"));
                     if (plugin.Configuration.ShowStackSalePrice && hq && LastItemQuantity > 1 && withGilIcon)
-                        payloads.Add(new TextPayload($" ({(hqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{GilIcon})"));
+                        payloads.Add(new TextPayload($" ({(hqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, FormatProvider)}{GilIcon})"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -159,10 +165,11 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             }
 
             T? GetNqHqData<T>(T? nqData, T? hqData) {
-                var result = hq ? hqData : nqData;
+                if ((hq ? hqData : nqData) is { } result)
+                    return result;
                 if (plugin.Configuration.ShowBothNqAndHq)
-                    result ??= hq ? nqData : hqData;
-                return result;
+                    return hq ? nqData : hqData;
+                return default;
             }
 
             if (minDc != ownDc && minDc != null && plugin.Configuration.ShowRegion) {
