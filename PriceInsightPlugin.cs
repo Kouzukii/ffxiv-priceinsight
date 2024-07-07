@@ -4,6 +4,7 @@ using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using Dalamud.Game.Config;
 
 namespace PriceInsight;
 
@@ -13,6 +14,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
     public Hooks Hooks { get; }
     public ItemPriceLookup ItemPriceLookup { get; private set; }
     public UniversalisClient UniversalisClient { get; }
+    public double gameUiScale { get; private set; }
 
     private readonly ConfigUI configUi;
 
@@ -45,12 +47,31 @@ public class PriceInsightPlugin : IDalamudPlugin {
         Hooks = new Hooks(this);
         configUi = new ConfigUI(this);
 
+        updateGameUiScale();
+        Service.GameConfig.SystemChanged += OnSystemChanged;
+
         Service.CommandManager.AddHandler("/priceinsight", new CommandInfo((_, _) => OpenConfigUI()) { HelpMessage = "Price Insight Configuration Menu" });
 
         pluginInterface.UiBuilder.Draw += () => configUi.Draw();
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfigUI;
         Service.Framework.Update += FrameworkOnUpdate;
         Service.ClientState.Logout += ClearCache;
+    }
+
+    private void OnSystemChanged(object? sender, ConfigChangeEvent e) {
+       if((SystemConfigOption) e.Option == SystemConfigOption.UiHighScale) {
+           updateGameUiScale();
+       }
+    }
+
+    private void updateGameUiScale() {
+        Service.GameConfig.TryGet(SystemConfigOption.UiHighScale, out uint uiScale);
+        gameUiScale = uiScale switch {
+            1 => 1.5,
+            2 => 2.0,
+            3 => 3.0,
+            _ => 1.0
+        };
     }
 
     public void ClearCache() {

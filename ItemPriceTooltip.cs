@@ -92,7 +92,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
         itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
         itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-        var remainingSpace = ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - itemTooltip->WindowNode->AtkResNode.Height - 36;
+        var remainingSpace = ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - (itemTooltip->WindowNode->AtkResNode.Height * plugin.gameUiScale) - 36;
         if (remainingSpace < 0) {
             plugin.Hooks.ItemDetailSetPositionPreservingOriginal(itemTooltip, itemTooltip->X, (short)(itemTooltip->Y + remainingSpace), 1);
         }
