@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -16,22 +17,22 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
     private readonly ConfigUI configUi;
 
-    private readonly Dictionary<InventoryType, DateTime> inventoriesToScan = new() {
-        { InventoryType.Inventory1, DateTime.UnixEpoch },
-        { InventoryType.Inventory2, DateTime.UnixEpoch },
-        { InventoryType.Inventory3, DateTime.UnixEpoch },
-        { InventoryType.Inventory4, DateTime.UnixEpoch },
-        { InventoryType.SaddleBag1, DateTime.UnixEpoch },
-        { InventoryType.SaddleBag2, DateTime.UnixEpoch },
-        { InventoryType.PremiumSaddleBag1, DateTime.UnixEpoch },
-        { InventoryType.PremiumSaddleBag2, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage1, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage2, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage3, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage4, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage5, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage6, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage7, DateTime.UnixEpoch },
+    private readonly Dictionary<(InventoryType Type, int DelayInMinutes), DateTime> inventoriesToScan = new() {
+        { (InventoryType.Inventory1, 1), DateTime.UnixEpoch },
+        { (InventoryType.Inventory2, 1), DateTime.UnixEpoch },
+        { (InventoryType.Inventory3, 1), DateTime.UnixEpoch },
+        { (InventoryType.Inventory4, 1), DateTime.UnixEpoch },
+        { (InventoryType.SaddleBag1, 15), DateTime.UnixEpoch },
+        { (InventoryType.SaddleBag2, 15), DateTime.UnixEpoch },
+        { (InventoryType.PremiumSaddleBag1, 15), DateTime.UnixEpoch },
+        { (InventoryType.PremiumSaddleBag2, 15), DateTime.UnixEpoch },
+        { (InventoryType.RetainerPage1, 15), DateTime.UnixEpoch },
+        { (InventoryType.RetainerPage2, 15), DateTime.UnixEpoch },
+        { (InventoryType.RetainerPage3, 15), DateTime.UnixEpoch },
+        { (InventoryType.RetainerPage4, 15), DateTime.UnixEpoch },
+        { (InventoryType.RetainerPage5, 15), DateTime.UnixEpoch },
+        { (InventoryType.RetainerPage6, 15), DateTime.UnixEpoch },
+        { (InventoryType.RetainerPage7, 15), DateTime.UnixEpoch },
     };
 
     public PriceInsightPlugin(IDalamudPluginInterface pluginInterface) {
@@ -73,13 +74,12 @@ public class PriceInsightPlugin : IDalamudPlugin {
             unsafe {
                 var manager = InventoryManager.Instance();
                 var items = new HashSet<uint>();
-                foreach (var (type, lastUpdate) in inventoriesToScan) {
-                    if ((DateTime.Now - lastUpdate).TotalMinutes < 59)
+                foreach (var (inv, lastUpdate) in inventoriesToScan) {
+                    if ((DateTime.Now - lastUpdate).TotalMinutes < inv.DelayInMinutes)
                         continue;
-                    var container = manager->GetInventoryContainer(type);
+                    var container = manager->GetInventoryContainer(inv.Type);
                     if (container == null || container->Loaded == 0)
                         continue;
-                    var empty = true;
                     for (var i = 0; i < container->Size; i++) {
                         var item = &container->Items[i];
                         var itemId = item->ItemId;
@@ -88,25 +88,12 @@ public class PriceInsightPlugin : IDalamudPlugin {
                         }
 
                         items.Add(itemId);
-                        empty = false;
-
-                        if (items.Count >= 50) {
-                            ItemPriceLookup.Fetch(items);
-                            items.Clear();
-                        }
                     }
-
-                    if (empty) {
-                        // The inventory was completely empty (retainer and companion inventory are empty before they're loaded)
-                        inventoriesToScan[type] = DateTime.Now.AddSeconds(-59 * 60 + 10);
-                        continue;
-                    }
-
-                    inventoriesToScan[type] = DateTime.Now;
+                    inventoriesToScan[inv] = DateTime.Now;
                 }
 
-                if (items.Count > 0) {
-                    ItemPriceLookup.Fetch(items);
+                foreach (var itemChunks in items.Chunk(30)) {
+                    ItemPriceLookup.Fetch(itemChunks);
                 }
             }
         } catch (Exception e) {
