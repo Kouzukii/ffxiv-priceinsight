@@ -113,7 +113,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         if (lookupState == LookupState.Faulted) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.Warning));
-            payloads.Add(new TextPayload(" Failed to obtain marketboard info.\n        This is likely an issue with Universalis.\n        Press alt to retry or check the /xllog."));
+            payloads.Add(new TextPayload(" Failed to obtain marketboard info.\n        The Universalis API is likely experiencing issues.\n        Please be patient or check the Universalis discord.\n        Press alt to retry or check the /xllog."));
             payloads.Add(new UIForegroundPayload(0));
         } else if (mbData == null) {
             payloads.Add(new UIForegroundPayload(20));
@@ -318,7 +318,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         }
     }
 
-    public void FetchFailed(IList<uint> items) {
+    public void FetchFailed(ICollection<uint> items) {
         if (!items.Contains((uint)Service.GameGui.HoveredItem % 500000)) return;
         var newText = ParseMbData(false, null, LookupState.Faulted);
         Service.Framework.RunOnFrameworkThread(() => {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -18,10 +19,10 @@ public class PriceInsightPlugin : IDalamudPlugin {
     private readonly ConfigUI configUi;
 
     private readonly Dictionary<(InventoryType Type, int DelayInMinutes), DateTime> inventoriesToScan = new() {
-        { (InventoryType.Inventory1, 1), DateTime.UnixEpoch },
-        { (InventoryType.Inventory2, 1), DateTime.UnixEpoch },
-        { (InventoryType.Inventory3, 1), DateTime.UnixEpoch },
-        { (InventoryType.Inventory4, 1), DateTime.UnixEpoch },
+        { (InventoryType.Inventory1, 5), DateTime.UnixEpoch },
+        { (InventoryType.Inventory2, 5), DateTime.UnixEpoch },
+        { (InventoryType.Inventory3, 5), DateTime.UnixEpoch },
+        { (InventoryType.Inventory4, 5), DateTime.UnixEpoch },
         { (InventoryType.SaddleBag1, 15), DateTime.UnixEpoch },
         { (InventoryType.SaddleBag2, 15), DateTime.UnixEpoch },
         { (InventoryType.PremiumSaddleBag1, 15), DateTime.UnixEpoch },
@@ -71,9 +72,9 @@ public class PriceInsightPlugin : IDalamudPlugin {
         if(!Configuration.PrefetchInventory)
             return;
         try {
+            var items = new HashSet<uint>();
             unsafe {
                 var manager = InventoryManager.Instance();
-                var items = new HashSet<uint>();
                 foreach (var (inv, lastUpdate) in inventoriesToScan) {
                     if ((DateTime.Now - lastUpdate).TotalMinutes < inv.DelayInMinutes)
                         continue;
@@ -91,10 +92,9 @@ public class PriceInsightPlugin : IDalamudPlugin {
                     }
                     inventoriesToScan[inv] = DateTime.Now;
                 }
-
-                foreach (var itemChunks in items.Chunk(30)) {
-                    ItemPriceLookup.Fetch(itemChunks);
-                }
+            }
+            if (items.Count > 0) {
+                ItemPriceLookup.Fetch(items);
             }
         } catch (Exception e) {
             Service.PluginLog.Error(e, "Failed to process update");

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using EasyCaching.InMemory;
 using Lumina.Excel;
@@ -9,13 +10,21 @@ using Lumina.Excel.GeneratedSheets;
 
 namespace PriceInsight;
 
-public class ItemPriceLookup(PriceInsightPlugin plugin) : IDisposable {
+public class ItemPriceLookup : IDisposable {
     private readonly InMemoryCaching cache = new("prices", new InMemoryCachingOptions { EnableReadDeepClone = false });
-    private World? homeWorld;
-    private readonly HashSet<uint> requestedItems = [];
-    private readonly ConcurrentDictionary<uint, Task> activeTasks = new();
-    private DateTime lastRequest = DateTime.UnixEpoch;
+    private readonly ConcurrentQueue<uint> requestedItems = new();
+    private readonly ConcurrentDictionary<uint, (Task Task, CancellationTokenSource Token)> activeTasks = new();
     private readonly Dictionary<byte, string> regions = new() { { 1, "Japan" }, { 2, "North-America" }, { 3, "Europe" }, { 4, "Oceania" } };
+    private readonly PriceInsightPlugin plugin;
+    private readonly CancellationTokenSource cancellationTokenSource = new();
+    private World? homeWorld;
+
+    public ItemPriceLookup(PriceInsightPlugin plugin) {
+        this.plugin = plugin;
+        Task.Run(ProcessQueue, cancellationTokenSource.Token)
+            // Silently ignore cancel
+            .ContinueWith(_ => { }, TaskContinuationOptions.OnlyOnCanceled);
+    }
 
     public bool CheckReady() {
         if (plugin.Configuration.UseCurrentWorld) {
@@ -43,34 +52,18 @@ public class ItemPriceLookup(PriceInsightPlugin plugin) : IDisposable {
 
         if (refresh) {
             cache.Remove(itemId.ToString());
+            if (activeTasks.TryRemove(itemId, out var t))
+                t.Token.Cancel();
         } else {
             if (cache.Get<MarketBoardData>(itemId.ToString()) is { IsNull: false, Value: var mbData })
                 return (mbData, LookupState.Marketable);
-            if (activeTasks.TryGetValue(itemId, out var task))
-                return (null, task.IsFaulted ? LookupState.Faulted : LookupState.Marketable);
+            if (activeTasks.TryGetValue(itemId, out var t))
+                return (null, t.Task.IsFaulted ? LookupState.Faulted : LookupState.Marketable);
         }
 
-        // Don't spam universalis with requests
-        if ((DateTime.Now - lastRequest).TotalMilliseconds < 500) {
-            lock (requestedItems) {
-                if (requestedItems.Add(itemId) && requestedItems.Count == 1)
-                    Task.Run(BufferFetch);
-            }
-        } else {
-            FetchInternal(new[] { itemId });
-        }
-
-        lastRequest = DateTime.Now;
+        requestedItems.Enqueue(itemId);
 
         return (null, LookupState.Marketable);
-    }
-
-    private async void BufferFetch() {
-        await Task.Delay(500);
-        lock (requestedItems) {
-            Fetch(requestedItems);
-            requestedItems.Clear();
-        }
     }
 
     private static bool ToMarketableItemId(ulong fullItemId, out uint itemId, ExcelSheet<Item>? sheet = null) {
@@ -84,7 +77,7 @@ public class ItemPriceLookup(PriceInsightPlugin plugin) : IDisposable {
     private IEnumerable<uint> FilterItemsToFetch(IEnumerable<uint> items) {
         var itemSheet = Service.DataManager.Excel.GetSheet<Item>();
         foreach (var id in items) {
-            if (cache.Get(id.ToString()) != null || (activeTasks.TryGetValue(id, out var task) && !task.IsFaulted))
+            if (cache.Get(id.ToString()) != null || (activeTasks.TryGetValue(id, out var t) && !t.Task.IsFaulted))
                 continue;
 
             if (ToMarketableItemId(id, out var itemId, itemSheet))
@@ -93,33 +86,48 @@ public class ItemPriceLookup(PriceInsightPlugin plugin) : IDisposable {
     }
 
     public void Fetch(IEnumerable<uint> items) {
-        var itemIds = FilterItemsToFetch(items).Distinct().ToList();
-
-        if (itemIds.Count == 0)
-            return;
-
-        FetchInternal(itemIds);
+        foreach (var item in FilterItemsToFetch(items)) {
+            if (!requestedItems.Contains(item))
+                requestedItems.Enqueue(item);
+        }
     }
 
-    private void FetchInternal(IList<uint> itemIds) {
+    private async Task ProcessQueue() {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        while (await timer.WaitForNextTickAsync(cancellationTokenSource.Token)) {
+            if (requestedItems.IsEmpty)
+                continue;
+            var items = new HashSet<uint>();
+            while (items.Count < 50 && requestedItems.TryDequeue(out var item))
+                items.Add(item);
+            await FetchInternal(items);
+        }
+
+        timer.Dispose();
+    }
+
+    private Task<Dictionary<uint, MarketBoardData>?> FetchInternal(ICollection<uint> itemIds) {
+        var token = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token);
         var itemTask = FetchItemTask();
 
         foreach (var id in itemIds) {
-            activeTasks[id] = Task.Run(async () => {
+            var task = Task.Run(async () => {
                 var items = await itemTask;
                 if (items != null && items.TryGetValue(id, out var value))
                     cache.Set(id.ToString(), value, TimeSpan.FromMinutes(90));
                 activeTasks.TryRemove(id, out _);
-            });
+            }, token.Token);
+            task.ContinueWith(_ => { }, TaskContinuationOptions.OnlyOnCanceled);
+            activeTasks[id] = (task, token);
         }
 
-        return;
+        return itemTask;
 
         async Task<Dictionary<uint, MarketBoardData>?> FetchItemTask() {
             if (Scope() is not { } scope || homeWorld?.RowId is not { } homeWorldId)
                 return null;
             var fetchStart = DateTime.Now;
-            var result = await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds);
+            var result = await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds, token.Token);
             if (result != null)
                 plugin.ItemPriceTooltip.Refresh(result);
             else
@@ -144,6 +152,6 @@ public class ItemPriceLookup(PriceInsightPlugin plugin) : IDisposable {
     }
 
     public void Dispose() {
-        cache.Clear();
+        cancellationTokenSource.Cancel();
     }
 }
