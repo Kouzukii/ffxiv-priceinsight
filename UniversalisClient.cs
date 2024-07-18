@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 
 namespace PriceInsight;
@@ -26,7 +27,7 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
         .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Row, w.DataCenter.Value?.Name.RawString ?? "unknown"));
 
     private static HttpClient CreateHttpClient(bool forceIpv4) {
-        var client =  new HttpClient(new SocketsHttpHandler {
+        var client = new HttpClient(new SocketsHttpHandler {
             AutomaticDecompression = DecompressionMethods.All,
             ConnectCallback = forceIpv4
                 // taken from https://github.com/dotnet/runtime/blob/b4ba5da5a0b8e0c7e3027a695f2acb2d9d19137b/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpConnectionPool.cs#L1621C47-L1621C47
@@ -43,10 +44,7 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
                 }
                 : null
         }) { Timeout = TimeSpan.FromSeconds(60) };
-
-        var agent =
-            $"PriceInsight/{Assembly.GetExecutingAssembly().GetName().Version?.ToString()} Dalamud/{Dalamud.Utility.Util.AssemblyVersion} {Environment.OSVersion.Platform.ToString()}/{Environment.OSVersion.Version.ToString()}";
-        client.DefaultRequestHeaders.UserAgent.ParseAdd(agent);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd($"PriceInsight/{Assembly.GetExecutingAssembly().GetName().Version} ({Environment.OSVersion}) Dalamud/{Util.AssemblyVersion}");
         return client;
     }
 
@@ -80,7 +78,8 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
         }
     }
 
-    public async Task<Dictionary<uint, MarketBoardData>?> GetMarketBoardDataList(string scope, uint homeWorldId, ICollection<uint> itemId, CancellationToken cancellationToken) {
+    public async Task<Dictionary<uint, MarketBoardData>?> GetMarketBoardDataList(
+        string scope, uint homeWorldId, ICollection<uint> itemId, CancellationToken cancellationToken) {
         // when only 1 item is queried, Universalis doesn't respond with an array
         if (itemId.Count == 1) {
             if (await GetMarketBoardData(scope, homeWorldId, itemId.First(), cancellationToken) is { } data)
@@ -90,7 +89,9 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
 
         try {
             using var result =
-                await httpClient.GetAsync($"https://universalis.app/api/v2/{scope}/{string.Join(',', itemId.Select(i => i.ToString()))}?fields={RequiredFieldsMulti}", cancellationToken);
+                await httpClient.GetAsync(
+                    $"https://universalis.app/api/v2/{scope}/{string.Join(',', itemId.Select(i => i.ToString()))}?fields={RequiredFieldsMulti}",
+                    cancellationToken);
 
             if (result.StatusCode != HttpStatusCode.OK) {
                 throw new HttpRequestException("Invalid status code " + result.StatusCode, null, result.StatusCode);

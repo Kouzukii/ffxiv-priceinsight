@@ -12,7 +12,7 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>PriceInsight</AssemblyName>
-		<Version>2.9.4.0</Version>
+		<Version>2.9.3.0</Version>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->
