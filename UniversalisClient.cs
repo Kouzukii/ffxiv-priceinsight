@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
         .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Row, w.DataCenter.Value?.Name.RawString ?? "unknown"));
 
     private static HttpClient CreateHttpClient(bool forceIpv4) {
-        return new HttpClient(new SocketsHttpHandler {
+        var client =  new HttpClient(new SocketsHttpHandler {
             AutomaticDecompression = DecompressionMethods.All,
             ConnectCallback = forceIpv4
                 // taken from https://github.com/dotnet/runtime/blob/b4ba5da5a0b8e0c7e3027a695f2acb2d9d19137b/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpConnectionPool.cs#L1621C47-L1621C47
@@ -42,6 +43,11 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
                 }
                 : null
         }) { Timeout = TimeSpan.FromSeconds(60) };
+
+        var agent =
+            $"PriceInsight/{Assembly.GetExecutingAssembly().GetName().Version?.ToString()} Dalamud/{Dalamud.Utility.Util.AssemblyVersion} {Environment.OSVersion.Platform.ToString()}/{Environment.OSVersion.Version.ToString()}";
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(agent);
+        return client;
     }
 
     public void ForceIpv4(bool force) {
@@ -57,7 +63,6 @@ public sealed class UniversalisClient(PriceInsightPlugin plugin) : IDisposable {
     public async Task<MarketBoardData?> GetMarketBoardData(string scope, uint homeWorldId, ulong itemId, CancellationToken cancellationToken) {
         try {
             using var result = await httpClient.GetAsync($"https://universalis.app/api/v2/{scope}/{itemId}?fields={RequiredFields}", cancellationToken);
-
             if (result.StatusCode != HttpStatusCode.OK) {
                 throw new HttpRequestException("Invalid status code " + result.StatusCode, null, result.StatusCode);
             }
