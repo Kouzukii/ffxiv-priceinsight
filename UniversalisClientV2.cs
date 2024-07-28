@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dalamud.Networking.Http;
+using Dalamud.Utility;
 using Lumina.Excel.GeneratedSheets;
 
 namespace PriceInsight;
@@ -23,6 +25,7 @@ public class UniversalisClientV2 : IDisposable {
         httpClient = new HttpClient(new SocketsHttpHandler {
             AutomaticDecompression = DecompressionMethods.All, ConnectCallback = happyEyeballsCallback.ConnectCallback
         });
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"PriceInsight/{Assembly.GetExecutingAssembly().GetName().Version} ({Environment.OSVersion}) Dalamud/{Util.AssemblyVersion}");
     }
 
     public async Task<Dictionary<uint, MarketBoardData>?> GetMarketBoardDataList(
