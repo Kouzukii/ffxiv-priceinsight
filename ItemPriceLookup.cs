@@ -74,26 +74,20 @@ public class ItemPriceLookup : IDisposable {
         return sheet?.GetRow(itemId) is not null and not { ItemSearchCategory.Row: 0 };
     }
 
-    private IEnumerable<uint> FilterItemsToFetch(IEnumerable<uint> items) {
+    public void Fetch(IEnumerable<uint> items) {
         var itemSheet = Service.DataManager.Excel.GetSheet<Item>();
         foreach (var id in items) {
-            if (cache.Get(id.ToString()) != null || (activeTasks.TryGetValue(id, out var t) && !t.Task.IsFaulted))
+            if (!ToMarketableItemId(id, out var itemId, itemSheet))
                 continue;
-
-            if (ToMarketableItemId(id, out var itemId, itemSheet))
-                yield return itemId;
-        }
-    }
-
-    public void Fetch(IEnumerable<uint> items) {
-        foreach (var item in FilterItemsToFetch(items)) {
-            if (!requestedItems.Contains(item))
-                requestedItems.Enqueue(item);
+            if (cache.Get(itemId.ToString()) != null || (activeTasks.TryGetValue(itemId, out var t) && !t.Task.IsFaulted))
+                continue;
+            if (!requestedItems.Contains(itemId))
+                requestedItems.Enqueue(itemId);
         }
     }
 
     private async Task ProcessQueue() {
-        var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
         while (await timer.WaitForNextTickAsync(cancellationTokenSource.Token)) {
             if (requestedItems.IsEmpty)
                 continue;
@@ -127,7 +121,9 @@ public class ItemPriceLookup : IDisposable {
             if (Scope() is not { } scope || homeWorld?.RowId is not { } homeWorldId)
                 return null;
             var fetchStart = DateTime.Now;
-            var result = await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds, token.Token);
+            var result = plugin.Configuration.UseNewUniversalisApi
+                ? await plugin.UniversalisClientV2.GetMarketBoardDataList(homeWorldId, itemIds, token.Token)
+                : await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds, token.Token);
             if (result != null)
                 plugin.ItemPriceTooltip.Refresh(result);
             else

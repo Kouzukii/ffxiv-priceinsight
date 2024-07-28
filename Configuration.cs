@@ -6,7 +6,7 @@ namespace PriceInsight;
 
 [Serializable]
 public class Configuration : IPluginConfiguration {
-    public int Version { get; set; } = 0;
+    public int Version { get; set; } = 1;
 
     public bool ShowRegion { get; set; } = false;
 
@@ -40,6 +40,8 @@ public class Configuration : IPluginConfiguration {
 
     public bool ForceIpv4 { get; set; } = false;
 
+    public bool UseNewUniversalisApi { get; set; } = true;
+
     // the below exist just to make saving less cumbersome
 
     [NonSerialized] private IDalamudPluginInterface pluginInterface = null!;
@@ -47,7 +49,16 @@ public class Configuration : IPluginConfiguration {
     public static Configuration Get(IDalamudPluginInterface pluginInterface) {
         var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         config.pluginInterface = pluginInterface;
+        config.Migrate();
         return config;
+    }
+
+    private void Migrate() {
+        if (Version == 0) {
+            UseNewUniversalisApi = new Random().NextDouble() >= 0.5;
+            Version = 1;
+            Save();
+        }
     }
 
     public void Save() {

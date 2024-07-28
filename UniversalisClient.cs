@@ -138,7 +138,7 @@ file class ItemData {
     public Dictionary<uint, UnixMilliDateTime>? worldUploadTimes { get; set; }
 
     public MarketBoardData ToMarketBoardData(uint worldId) {
-        var dc = UniversalisClient.WorldLookup[worldId].Dc;
+        var (worldName, dc, dcName) = UniversalisClient.WorldLookup[worldId];
         var marketBoardData = new MarketBoardData {
             MinimumPriceNQ = this.listings?.FirstOrDefault(l => !l.hq && l.IsDatacenter(dc))?.ToListing(this),
             MinimumPriceHQ = this.listings?.FirstOrDefault(l => l.hq && l.IsDatacenter(dc))?.ToListing(this),
@@ -152,8 +152,8 @@ file class ItemData {
             OwnMostRecentPurchaseHQ = this.recentHistory?.FirstOrDefault(l => l.hq && l.IsHomeWorld(worldId)),
             RegionMostRecentPurchaseNQ = this.recentHistory?.FirstOrDefault(l => !l.hq),
             RegionMostRecentPurchaseHQ = this.recentHistory?.FirstOrDefault(l => l.hq),
-            HomeWorld = Service.DataManager.GetExcelSheet<World>()!.GetRow(worldId)!.Name,
-            HomeDatacenter = UniversalisClient.WorldLookup[worldId].DcName,
+            HomeWorld = worldName,
+            HomeDatacenter = dcName,
             Scope = this.regionName ?? this.dcName ?? this.worldName ?? "World",
             AverageSalePriceNQ = this.averagePriceNQ > 0 ? this.averagePriceNQ : null,
             AverageSalePriceHQ = this.averagePriceHQ > 0 ? this.averagePriceHQ : null,

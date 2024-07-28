@@ -1,7 +1,7 @@
 using System;
 using ImGuiNET;
 
-namespace PriceInsight; 
+namespace PriceInsight;
 
 class ConfigUI : IDisposable {
     private readonly PriceInsightPlugin plugin;
@@ -33,7 +33,7 @@ class ConfigUI : IDisposable {
                 conf.RefreshWithAlt = configValue;
                 conf.Save();
             }
-            
+
             configValue = conf.PrefetchInventory;
             if (ImGui.Checkbox("Prefetch prices for items in inventory", ref configValue)) {
                 conf.PrefetchInventory = configValue;
@@ -41,6 +41,14 @@ class ConfigUI : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Prefetch prices for all items in inventory, chocobo saddlebag and retainer when logging in.\nWARNING: Causes high network load with the \"Region\" setting enabled.");
+
+            configValue = conf.UseNewUniversalisApi;
+            if (ImGui.Checkbox("Use new Universalis API", ref configValue)) {
+                conf.UseNewUniversalisApi = configValue;
+                conf.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Use the new experimental Universalis API.\nThe new API is supposed to be significantly faster and more stable, but is still in the testing phase.\nIf you are experiencing issues with this option, turn it off.");
 
             configValue = conf.UseCurrentWorld;
             if (ImGui.Checkbox("Use current world as home world", ref configValue)) {
@@ -62,9 +70,9 @@ class ConfigUI : IDisposable {
 
             ImGui.Separator();
             ImGui.PushID(0);
-            
+
             ImGui.Text("Show cheapest price in:");
-            
+
             configValue = conf.ShowRegion;
             if (ImGui.Checkbox("Region", ref configValue)) {
                 conf.ShowRegion = configValue;
@@ -85,11 +93,11 @@ class ConfigUI : IDisposable {
                 conf.ShowWorld = configValue;
                 conf.Save();
             }
-            
+
             ImGui.PopID();
             ImGui.Separator();
             ImGui.PushID(1);
-            
+
             ImGui.Text("Show most recent purchase in:");
 
             configValue = conf.ShowMostRecentPurchaseRegion;
@@ -112,10 +120,10 @@ class ConfigUI : IDisposable {
                 conf.ShowMostRecentPurchaseWorld = configValue;
                 conf.Save();
             }
-            
+
             ImGui.PopID();
             ImGui.Separator();
-            
+
             configValue = conf.ShowDailySaleVelocity;
             if (ImGui.Checkbox("Show sales per day", ref configValue)) {
                 conf.ShowDailySaleVelocity = configValue;
@@ -131,7 +139,7 @@ class ConfigUI : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show the average sale price based on the last 20 purchases.");
-            
+
             configValue = conf.ShowStackSalePrice;
             if (ImGui.Checkbox("Show stack sale price", ref configValue)) {
                 conf.ShowStackSalePrice = configValue;
@@ -139,7 +147,7 @@ class ConfigUI : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show the price of the hovered stack if sold at the given unit price.");
-            
+
             configValue = conf.ShowAge;
             if (ImGui.Checkbox("Show age of data", ref configValue)) {
                 conf.ShowAge = configValue;
@@ -147,7 +155,7 @@ class ConfigUI : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show when the price info was last refreshed.\nCan be turned off to reduce tooltip bloat.");
-            
+
             configValue = conf.ShowDatacenterOnCrossWorlds;
             if (ImGui.Checkbox("Show datacenter for foreign worlds", ref configValue)) {
                 conf.ShowDatacenterOnCrossWorlds = configValue;
@@ -155,7 +163,7 @@ class ConfigUI : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show the datacenter for worlds from other datacenters when displaying prices for the entire region.\nCan be turned off to reduce tooltip bloat.");
-            
+
             configValue = conf.ShowBothNqAndHq;
             if (ImGui.Checkbox("Always display NQ and HQ prices", ref configValue)) {
                 conf.ShowBothNqAndHq = configValue;

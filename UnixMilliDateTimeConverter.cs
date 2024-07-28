@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -6,6 +7,7 @@ namespace PriceInsight;
 
 [JsonConverter(typeof(UnixMilliDateTimeConverter))]
 public record UnixMilliDateTime(DateTime Value) {
+    [return: NotNullIfNotNull(nameof(self))]
     public static implicit operator DateTime?(UnixMilliDateTime? self) => self?.Value;
 }
 

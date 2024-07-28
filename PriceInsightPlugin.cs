@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -15,6 +13,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
     public Hooks Hooks { get; }
     public ItemPriceLookup ItemPriceLookup { get; private set; }
     public UniversalisClient UniversalisClient { get; }
+    public UniversalisClientV2 UniversalisClientV2 { get; }
 
     private readonly ConfigUI configUi;
 
@@ -42,6 +41,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
         Configuration = Configuration.Get(pluginInterface);
 
         UniversalisClient = new UniversalisClient(this);
+        UniversalisClientV2 = new UniversalisClientV2();
         ItemPriceLookup = new ItemPriceLookup(this);
         ItemPriceTooltip = new ItemPriceTooltip(this);
         Hooks = new Hooks(this);
@@ -113,6 +113,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
         ItemPriceTooltip.Dispose();
         ItemPriceLookup.Dispose();
         UniversalisClient.Dispose();
+        UniversalisClientV2.Dispose();
         configUi.Dispose();
     }
 }
