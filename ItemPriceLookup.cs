@@ -14,7 +14,6 @@ public class ItemPriceLookup : IDisposable {
     private readonly InMemoryCaching cache = new("prices", new InMemoryCachingOptions { EnableReadDeepClone = false });
     private readonly ConcurrentQueue<uint> requestedItems = new();
     private readonly ConcurrentDictionary<uint, (Task Task, CancellationTokenSource Token)> activeTasks = new();
-    private readonly Dictionary<byte, string> regions = new() { { 1, "Japan" }, { 2, "North-America" }, { 3, "Europe" }, { 4, "Oceania" } };
     private readonly PriceInsightPlugin plugin;
     private readonly CancellationTokenSource cancellationTokenSource = new();
     private World? homeWorld;
@@ -34,16 +33,6 @@ public class ItemPriceLookup : IDisposable {
         }
 
         return homeWorld != null;
-    }
-
-    public bool NeedsClearing {
-        get {
-            if (plugin.Configuration.UseCurrentWorld && homeWorld != null) {
-                return Service.ClientState.LocalPlayer?.CurrentWorld.Id != homeWorld.RowId;
-            }
-
-            return false;
-        }
     }
 
     public (MarketBoardData? MarketBoardData, LookupState State) Get(ulong fullItemId, bool refresh) {
@@ -87,7 +76,7 @@ public class ItemPriceLookup : IDisposable {
     }
 
     private async Task ProcessQueue() {
-        var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+        var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(200));
         while (await timer.WaitForNextTickAsync(cancellationTokenSource.Token)) {
             if (requestedItems.IsEmpty)
                 continue;
@@ -118,12 +107,10 @@ public class ItemPriceLookup : IDisposable {
         return itemTask;
 
         async Task<Dictionary<uint, MarketBoardData>?> FetchItemTask() {
-            if (Scope() is not { } scope || homeWorld?.RowId is not { } homeWorldId)
+            if (homeWorld?.RowId is not { } homeWorldId)
                 return null;
             var fetchStart = DateTime.Now;
-            var result = plugin.Configuration.UseNewUniversalisApi
-                ? await plugin.UniversalisClientV2.GetMarketBoardDataList(homeWorldId, itemIds, token.Token)
-                : await plugin.UniversalisClient.GetMarketBoardDataList(scope, homeWorldId, itemIds, token.Token);
+            var result = await plugin.UniversalisClientV2.GetMarketBoardDataList(homeWorldId, itemIds, token.Token);
             if (result != null)
                 plugin.ItemPriceTooltip.Refresh(result);
             else
@@ -131,20 +118,6 @@ public class ItemPriceLookup : IDisposable {
             Service.PluginLog.Debug($"Fetching {itemIds.Count} items took {(DateTime.Now - fetchStart).TotalMilliseconds:F0}ms");
             return result;
         }
-    }
-
-    private string? Scope() {
-        if (plugin.Configuration.ShowRegion || plugin.Configuration.ShowMostRecentPurchaseRegion) {
-            if (homeWorld?.DataCenter?.Value?.Region is { } region)
-                return regions[region];
-            return null;
-        }
-
-        if (plugin.Configuration.ShowDatacenter || plugin.Configuration.ShowMostRecentPurchase) {
-            return homeWorld?.DataCenter?.Value?.Name.RawString;
-        }
-
-        return homeWorld?.Name.RawString;
     }
 
     public void Dispose() {

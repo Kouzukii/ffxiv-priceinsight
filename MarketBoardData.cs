@@ -1,27 +1,26 @@
 using System;
 
-namespace PriceInsight; 
+namespace PriceInsight;
 
 public record MarketBoardData {
-    public required Listing? MinimumPriceNQ { get; init; }
-    public required Listing? MinimumPriceHQ { get; init; }
-    public required Listing? OwnMinimumPriceNQ { get; init; }
-    public required Listing? OwnMinimumPriceHQ { get; init; }
-    public required Listing? RegionMinimumPriceNQ { get; init; }
-    public required Listing? RegionMinimumPriceHQ { get; init; }
-    public required Listing? MostRecentPurchaseHQ { get; init; }
-    public required Listing? MostRecentPurchaseNQ { get; init; }
-    public required Listing? OwnMostRecentPurchaseHQ { get; init; }
-    public required Listing? OwnMostRecentPurchaseNQ { get; init; }
-    public required Listing? RegionMostRecentPurchaseHQ { get; init; }
-    public required Listing? RegionMostRecentPurchaseNQ { get; init; }
-    public required double? AverageSalePriceNQ { get; init; }
-    public required double? AverageSalePriceHQ { get; init; }
-    public required double? DailySaleVelocityNQ { get; init; }
-    public required double? DailySaleVelocityHQ { get; init; }
+    public required Group<Listing> MinimumPrice { get; init; }
+    public required Group<Listing> MostRecentPurchase { get; init; }
+    public required Group<double?> AverageSalePrice { get; init; }
+    public required Group<double?> DailySaleVelocity { get; init; }
     public required string HomeWorld { get; init; }
-    public required string HomeDatacenter { get; init; }
-    public required string Scope { get; init; }
+    public required string Datacenter { get; init; }
+    public required string Region { get; init; }
+}
+
+public record Group<T> {
+    public required Quality<T> World { get; init; }
+    public required Quality<T> Datacenter { get; init; }
+    public required Quality<T> Region { get; init; }
+}
+
+public record Quality<T> {
+    public required T? Nq { get; init; }
+    public required T? Hq { get; init; }
 }
 
 public record Listing {

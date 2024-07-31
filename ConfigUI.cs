@@ -3,18 +3,12 @@ using ImGuiNET;
 
 namespace PriceInsight;
 
-class ConfigUI : IDisposable {
-    private readonly PriceInsightPlugin plugin;
-
+internal class ConfigUI(PriceInsightPlugin plugin) : IDisposable {
     private bool settingsVisible = false;
 
     public bool SettingsVisible {
         get => settingsVisible;
         set => settingsVisible = value;
-    }
-
-    public ConfigUI(PriceInsightPlugin plugin) {
-        this.plugin = plugin;
     }
 
     public void Dispose() {
@@ -40,15 +34,7 @@ class ConfigUI : IDisposable {
                 conf.Save();
             }
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Prefetch prices for all items in inventory, chocobo saddlebag and retainer when logging in.\nWARNING: Causes high network load with the \"Region\" setting enabled.");
-
-            configValue = conf.UseNewUniversalisApi;
-            if (ImGui.Checkbox("Use new Universalis API", ref configValue)) {
-                conf.UseNewUniversalisApi = configValue;
-                conf.Save();
-            }
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Use the new experimental Universalis API.\nThe new API is supposed to be significantly faster and more stable, but is still in the testing phase.\nIf you are experiencing issues with this option, turn it off.");
+                ImGui.SetTooltip("Prefetch prices for all items in inventory, chocobo saddlebag and retainer when logging in.");
 
             configValue = conf.UseCurrentWorld;
             if (ImGui.Checkbox("Use current world as home world", ref configValue)) {
@@ -59,15 +45,6 @@ class ConfigUI : IDisposable {
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("The current world you're on will be considered your \"home world\".\nUseful if you're datacenter travelling and want to see prices there.");
 
-            configValue = conf.ForceIpv4;
-            if (ImGui.Checkbox("Force Ipv4 when connecting to universalis", ref configValue)) {
-                conf.ForceIpv4 = configValue;
-                conf.Save();
-                plugin.UniversalisClient.ForceIpv4(configValue);
-            }
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("May be required when connecting through a VPN.\nIf you're experiencing connection issues try enabling this.");
-
             ImGui.Separator();
             ImGui.PushID(0);
 
@@ -77,7 +54,6 @@ class ConfigUI : IDisposable {
             if (ImGui.Checkbox("Region", ref configValue)) {
                 conf.ShowRegion = configValue;
                 conf.Save();
-                plugin.ClearCache();
             }
             TooltipRegion();
 
@@ -85,7 +61,6 @@ class ConfigUI : IDisposable {
             if (ImGui.Checkbox("Datacenter", ref configValue)) {
                 conf.ShowDatacenter = configValue;
                 conf.Save();
-                plugin.ClearCache();
             }
 
             configValue = conf.ShowWorld;
@@ -104,7 +79,6 @@ class ConfigUI : IDisposable {
             if (ImGui.Checkbox("Region", ref configValue)) {
                 conf.ShowMostRecentPurchaseRegion = configValue;
                 conf.Save();
-                plugin.ClearCache();
             }
             TooltipRegion();
 
@@ -112,7 +86,6 @@ class ConfigUI : IDisposable {
             if (ImGui.Checkbox("Datacenter", ref configValue)) {
                 conf.ShowMostRecentPurchase = configValue;
                 conf.Save();
-                plugin.ClearCache();
             }
 
             configValue = conf.ShowMostRecentPurchaseWorld;
@@ -124,21 +97,21 @@ class ConfigUI : IDisposable {
             ImGui.PopID();
             ImGui.Separator();
 
-            configValue = conf.ShowDailySaleVelocity;
-            if (ImGui.Checkbox("Show sales per day", ref configValue)) {
-                conf.ShowDailySaleVelocity = configValue;
+            var selectValue = conf.ShowDailySaleVelocityIn;
+            if (ImGui.Combo("Show sales per day", ref selectValue, "Do not show\0World\0Datacenter\0Region")) {
+                conf.ShowDailySaleVelocityIn = selectValue;
                 conf.Save();
             }
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Show the average sales per day based on the last 20 purchases.");
+                ImGui.SetTooltip("Show the average sales per day based on sales of the last 4 days.");
 
-            configValue = conf.ShowAverageSalePrice;
-            if (ImGui.Checkbox("Show average sale price", ref configValue)) {
-                conf.ShowAverageSalePrice = configValue;
+            selectValue = conf.ShowAverageSalePriceIn;
+            if (ImGui.Combo("Show average sale price", ref selectValue, "Do not show\0World\0Datacenter\0Region")) {
+                conf.ShowAverageSalePriceIn = selectValue;
                 conf.Save();
             }
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Show the average sale price based on the last 20 purchases.");
+                ImGui.SetTooltip("Show the average sale price based on sales of the last 4 days.");
 
             configValue = conf.ShowStackSalePrice;
             if (ImGui.Checkbox("Show stack sale price", ref configValue)) {

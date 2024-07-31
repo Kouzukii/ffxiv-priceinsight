@@ -1,12 +1,14 @@
 using System;
+using System.Collections.Generic;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
+using Newtonsoft.Json;
 
 namespace PriceInsight;
 
 [Serializable]
 public class Configuration : IPluginConfiguration {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
 
     public bool ShowRegion { get; set; } = false;
 
@@ -22,9 +24,9 @@ public class Configuration : IPluginConfiguration {
 
     public bool ShowMostRecentPurchaseWorld { get; set; } = true;
 
-    public bool ShowDailySaleVelocity { get; set; } = false;
+    public int ShowDailySaleVelocityIn { get; set; } = 1;
 
-    public bool ShowAverageSalePrice { get; set; } = false;
+    public int ShowAverageSalePriceIn { get; set; } = 0;
 
     public bool UseCurrentWorld { get; set; } = false;
 
@@ -38,9 +40,8 @@ public class Configuration : IPluginConfiguration {
 
     public bool ShowBothNqAndHq { get; set; } = true;
 
-    public bool ForceIpv4 { get; set; } = false;
-
-    public bool UseNewUniversalisApi { get; set; } = true;
+    [JsonExtensionData]
+    public Dictionary<string, object> AdditionalData { get; set; } = new();
 
     // the below exist just to make saving less cumbersome
 
@@ -54,9 +55,10 @@ public class Configuration : IPluginConfiguration {
     }
 
     private void Migrate() {
-        if (Version == 0) {
-            UseNewUniversalisApi = new Random().NextDouble() >= 0.5;
-            Version = 1;
+        if (Version < 2) {
+            ShowAverageSalePriceIn = Equals(AdditionalData.GetValueOrDefault("ShowAverageSalePrice"), true) ? 1 : 0;
+            AdditionalData.Clear();
+            Version = 2;
             Save();
         }
     }

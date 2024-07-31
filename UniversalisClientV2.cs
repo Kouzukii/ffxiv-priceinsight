@@ -14,8 +14,9 @@ using Lumina.Excel.GeneratedSheets;
 namespace PriceInsight;
 
 public class UniversalisClientV2 : IDisposable {
-    internal static readonly Dictionary<uint, (string Name, uint Dc, string DcName)> WorldLookup = Service.DataManager.GetExcelSheet<World>()!
-        .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Row, w.DataCenter.Value?.Name.RawString ?? "unknown"));
+    private static readonly Dictionary<byte, string> Regions = new() { { 1, "Japan" }, { 2, "North-America" }, { 3, "Europe" }, { 4, "Oceania" } };
+    internal static readonly Dictionary<uint, (string Name, string DcName, string Region)> WorldLookup = Service.DataManager.GetExcelSheet<World>()!
+        .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Value?.Name.RawString ?? "unknown", Regions.GetValueOrDefault(w.DataCenter.Value?.Region ?? 0) ?? "unknown"));
 
     private readonly HappyEyeballsCallback happyEyeballsCallback;
     private readonly HttpClient httpClient;
@@ -77,31 +78,71 @@ file class Result {
     public List<WorldUploadTime>? worldUploadTimes { get; set; }
 
     public MarketBoardData ToMarketBoardData(uint worldId) {
-        var (worldName, _, dcName) = UniversalisClient.WorldLookup[worldId];
+        var (worldName, dcName, region) = UniversalisClientV2.WorldLookup[worldId];
         var worldUploadTimes = this.worldUploadTimes != null
             ? this.worldUploadTimes.ToDictionary(w => w.worldId, w => (DateTime)w.timestamp)
             : new Dictionary<uint, DateTime>();
         var worldUploadTime = worldUploadTimes.GetValueOrDefault(worldId, DateTime.Now);
         var marketBoardData = new MarketBoardData {
-            MinimumPriceNQ = this.nq?.minListing?.dc?.ToListing(worldUploadTime, worldUploadTimes),
-            MinimumPriceHQ = this.hq?.minListing?.dc?.ToListing(worldUploadTime, worldUploadTimes),
-            OwnMinimumPriceNQ = this.nq?.minListing?.world?.ToListing(worldUploadTime, worldUploadTimes),
-            OwnMinimumPriceHQ = this.hq?.minListing?.world?.ToListing(worldUploadTime, worldUploadTimes),
-            RegionMinimumPriceNQ = this.nq?.minListing?.region?.ToListing(worldUploadTime, worldUploadTimes),
-            RegionMinimumPriceHQ = this.hq?.minListing?.region?.ToListing(worldUploadTime, worldUploadTimes),
-            MostRecentPurchaseNQ = this.nq?.recentPurchase?.dc,
-            MostRecentPurchaseHQ = this.hq?.recentPurchase?.dc,
-            OwnMostRecentPurchaseNQ = this.nq?.recentPurchase?.world,
-            OwnMostRecentPurchaseHQ = this.hq?.recentPurchase?.world,
-            RegionMostRecentPurchaseNQ = this.nq?.recentPurchase?.region,
-            RegionMostRecentPurchaseHQ = this.hq?.recentPurchase?.region,
             HomeWorld = worldName,
-            HomeDatacenter = dcName,
-            Scope = worldName,
-            AverageSalePriceNQ = this.nq?.averageSalePrice?.world?.price > 0 ? this.nq?.averageSalePrice?.world?.price : null,
-            AverageSalePriceHQ = this.hq?.averageSalePrice?.world?.price > 0 ? this.hq?.averageSalePrice?.world?.price : null,
-            DailySaleVelocityNQ = this.nq?.dailySaleVelocity?.world?.quantity > 0 ? this.nq?.dailySaleVelocity?.world?.quantity : null,
-            DailySaleVelocityHQ = this.hq?.dailySaleVelocity?.world?.quantity > 0 ? this.hq?.dailySaleVelocity?.world?.quantity : null
+            Datacenter = dcName,
+            Region = region,
+            MinimumPrice = new() {
+                World = new() {
+                    Nq = this.nq?.minListing?.world?.ToListing(worldUploadTime, worldUploadTimes),
+                    Hq = this.hq?.minListing?.world?.ToListing(worldUploadTime, worldUploadTimes),
+                },
+                Datacenter = new() {
+                    Nq = this.nq?.minListing?.dc?.ToListing(worldUploadTime, worldUploadTimes),
+                    Hq = this.hq?.minListing?.dc?.ToListing(worldUploadTime, worldUploadTimes),
+                },
+                Region = new() {
+                    Nq = this.nq?.minListing?.region?.ToListing(worldUploadTime, worldUploadTimes),
+                    Hq = this.hq?.minListing?.region?.ToListing(worldUploadTime, worldUploadTimes),
+                }
+            },
+            MostRecentPurchase = new() {
+                World = new() {
+                    Nq = this.nq?.recentPurchase?.world,
+                    Hq = this.hq?.recentPurchase?.world,
+                },
+                Datacenter = new() {
+                    Nq = this.nq?.recentPurchase?.dc,
+                    Hq = this.hq?.recentPurchase?.dc,
+                },
+                Region = new() {
+                    Nq = this.nq?.recentPurchase?.region,
+                    Hq = this.hq?.recentPurchase?.region,
+                }
+            },
+            AverageSalePrice = new() {
+                World = new() {
+                    Nq = this.nq?.averageSalePrice?.world?.price > 0 ? this.nq?.averageSalePrice?.world?.price : null,
+                    Hq = this.hq?.averageSalePrice?.world?.price > 0 ? this.hq?.averageSalePrice?.world?.price : null,
+                },
+                Datacenter = new() {
+                    Nq = this.nq?.averageSalePrice?.dc?.price > 0 ? this.nq?.averageSalePrice?.dc?.price : null,
+                    Hq = this.hq?.averageSalePrice?.dc?.price > 0 ? this.hq?.averageSalePrice?.dc?.price : null,
+                },
+                Region = new() {
+                    Nq = this.nq?.averageSalePrice?.region?.price > 0 ? this.nq?.averageSalePrice?.region?.price : null,
+                    Hq = this.hq?.averageSalePrice?.region?.price > 0 ? this.hq?.averageSalePrice?.region?.price : null,
+                }
+            },
+            DailySaleVelocity = new() {
+                World = new() {
+                    Nq = this.nq?.dailySaleVelocity?.world?.quantity > 0 ? this.nq?.dailySaleVelocity?.world?.quantity : null,
+                    Hq = this.hq?.dailySaleVelocity?.world?.quantity > 0 ? this.hq?.dailySaleVelocity?.world?.quantity : null,
+                },
+                Datacenter = new() {
+                    Nq = this.nq?.dailySaleVelocity?.dc?.quantity > 0 ? this.nq?.dailySaleVelocity?.dc?.quantity : null,
+                    Hq = this.hq?.dailySaleVelocity?.dc?.quantity > 0 ? this.hq?.dailySaleVelocity?.dc?.quantity : null,
+                },
+                Region = new() {
+                    Nq = this.nq?.dailySaleVelocity?.region?.quantity > 0 ? this.nq?.dailySaleVelocity?.region?.quantity : null,
+                    Hq = this.hq?.dailySaleVelocity?.region?.quantity > 0 ? this.hq?.dailySaleVelocity?.region?.quantity : null,
+                },
+            }
         };
         return marketBoardData;
     }
@@ -131,7 +172,7 @@ file class Entry {
             return null;
         string? world = null, datacenter = null;
         if (e.worldId != null) {
-            (world, _, datacenter) = UniversalisClientV2.WorldLookup[e.worldId.Value];
+            (world, datacenter, _) = UniversalisClientV2.WorldLookup[e.worldId.Value];
         }
 
         return new Listing { Price = e.price.Value, Time = e.timestamp, World = world, Datacenter = datacenter };

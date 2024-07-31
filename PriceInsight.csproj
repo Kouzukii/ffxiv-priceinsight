@@ -12,7 +12,7 @@
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>PriceInsight</AssemblyName>
-		<Version>2.10.0.0</Version>
+		<Version>2.11.0.0</Version>
 	</PropertyGroup>
 
 	<!-- Build Configuration -->
@@ -62,6 +62,9 @@
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="FFXIVClientStructs">
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="Newtonsoft.Json">
 			<Private>False</Private>
 		</Reference>
 	</ItemGroup>
