@@ -9,14 +9,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dalamud.Networking.Http;
 using Dalamud.Utility;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 
 namespace PriceInsight;
 
 public class UniversalisClientV2 : IDisposable {
     private static readonly Dictionary<byte, string> Regions = new() { { 1, "Japan" }, { 2, "North-America" }, { 3, "Europe" }, { 4, "Oceania" } };
-    internal static readonly Dictionary<uint, (string Name, string DcName, string Region)> WorldLookup = Service.DataManager.GetExcelSheet<World>()!
-        .ToDictionary(w => w.RowId, w => (w.Name.RawString, w.DataCenter.Value?.Name.RawString ?? "unknown", Regions.GetValueOrDefault(w.DataCenter.Value?.Region ?? 0) ?? "unknown"));
+    internal static readonly Dictionary<uint, (string Name, string DcName, string Region)> WorldLookup = Service.DataManager.GetExcelSheet<World>()
+        .ToDictionary(w => w.RowId, w => (w.Name.ExtractText(), w.DataCenter.Value.Name.ExtractText(), Regions.GetValueOrDefault(w.DataCenter.Value.Region) ?? "unknown"));
 
     private readonly HappyEyeballsCallback happyEyeballsCallback;
     private readonly HttpClient httpClient;

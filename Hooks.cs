@@ -11,7 +11,7 @@ public class Hooks : IDisposable {
 
     private unsafe delegate byte AgentItemDetailOnItemHovered(void* a1, void* a2, void* a3, void* a4, uint a5, uint a6, int* a7);
 
-    [Signature("E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 48 89 9C 24 ?? ?? ?? ?? 48 89 B4 24", DetourName = nameof(AgentItemDetailOnItemHoveredDetour))]
+    [Signature("E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 48 89 9C 24 ?? ?? ?? ?? 4C 89 A4 24", DetourName = nameof(AgentItemDetailOnItemHoveredDetour))]
     private readonly Hook<AgentItemDetailOnItemHovered> agentItemDetailOnItemHovered = null!;
 
     [Signature("E8 ?? ?? ?? ?? 45 85 ED 4C 8B AC 24")]

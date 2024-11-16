@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using EasyCaching.InMemory;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 
 namespace PriceInsight;
 
@@ -16,7 +16,7 @@ public class ItemPriceLookup : IDisposable {
     private readonly ConcurrentDictionary<uint, (Task Task, CancellationTokenSource Token)> activeTasks = new();
     private readonly PriceInsightPlugin plugin;
     private readonly CancellationTokenSource cancellationTokenSource = new();
-    private World? homeWorld;
+    private uint? homeWorldId;
 
     public ItemPriceLookup(PriceInsightPlugin plugin) {
         this.plugin = plugin;
@@ -27,12 +27,12 @@ public class ItemPriceLookup : IDisposable {
 
     public bool CheckReady() {
         if (plugin.Configuration.UseCurrentWorld) {
-            homeWorld ??= Service.ClientState.LocalPlayer?.CurrentWorld.GameData;
+            homeWorldId ??= Service.ClientState.LocalPlayer?.CurrentWorld.RowId;
         } else {
-            homeWorld ??= Service.ClientState.LocalPlayer?.HomeWorld.GameData;
+            homeWorldId ??= Service.ClientState.LocalPlayer?.HomeWorld.RowId;
         }
 
-        return homeWorld != null;
+        return homeWorldId != null;
     }
 
     public (MarketBoardData? MarketBoardData, LookupState State) Get(ulong fullItemId, bool refresh) {
@@ -60,7 +60,7 @@ public class ItemPriceLookup : IDisposable {
         if (fullItemId is >= 2000000 or >= 500000 and < 1000000)
             return false;
         sheet ??= Service.DataManager.Excel.GetSheet<Item>();
-        return sheet?.GetRow(itemId) is not null and not { ItemSearchCategory.Row: 0 };
+        return sheet.GetRowOrDefault(itemId) is not null and not { ItemSearchCategory.RowId: 0 };
     }
 
     public void Fetch(IEnumerable<uint> items) {
@@ -107,10 +107,10 @@ public class ItemPriceLookup : IDisposable {
         return itemTask;
 
         async Task<Dictionary<uint, MarketBoardData>?> FetchItemTask() {
-            if (homeWorld?.RowId is not { } homeWorldId)
+            if (!homeWorldId.HasValue)
                 return null;
             var fetchStart = DateTime.Now;
-            var result = await plugin.UniversalisClientV2.GetMarketBoardDataList(homeWorldId, itemIds, token.Token);
+            var result = await plugin.UniversalisClientV2.GetMarketBoardDataList(homeWorldId.Value, itemIds, token.Token);
             if (result != null)
                 plugin.ItemPriceTooltip.Refresh(result);
             else

@@ -66,7 +66,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
         lastCheckRetainer = DateTime.Now;
     }
 
-    public void ClearCache() {
+    public void ClearCache(int type = 0, int code = 0) {
         var ipl = ItemPriceLookup;
         ItemPriceLookup = new ItemPriceLookup(this);
         ipl.Dispose();
