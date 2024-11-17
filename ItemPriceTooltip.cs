@@ -64,7 +64,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         if (insertNode == null)
             return;
         if (priceNode == null) {
-            var baseNode = itemTooltip->GetTextNodeById(43);
+            var baseNode = itemTooltip->GetTextNodeById(44);
             if (baseNode == null)
                 return;
             priceNode = IMemorySpace.GetUISpace()->Create<AtkTextNode>();
