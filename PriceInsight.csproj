@@ -1,8 +1,9 @@
-﻿<Project Sdk="Dalamud.NET.Sdk/13.0.0">
+﻿<Project Sdk="Dalamud.NET.Sdk/14.0.1">
 	<!-- Assembly Configuration -->
 	<PropertyGroup>
 		<AssemblyName>PriceInsight</AssemblyName>
 		<Version>2.11.3.0</Version>
+		<TargetFramework>net10.0-windows7.0</TargetFramework>
 	</PropertyGroup>
 
 	<!-- NuGet Packages -->
