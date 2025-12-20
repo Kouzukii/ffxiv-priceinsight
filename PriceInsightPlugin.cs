@@ -36,6 +36,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
         pluginInterface.UiBuilder.Draw += () => configUi.Draw();
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfigUI;
+        pluginInterface.UiBuilder.OpenMainUi += OpenConfigUI;
         Service.ClientState.Logout += ClearCache;
         Service.ClientState.Login += ClientOnLogin;
     }

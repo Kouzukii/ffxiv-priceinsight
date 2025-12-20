@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dalamud.Networking.Http;
+using Dalamud.Plugin;
 using Dalamud.Utility;
 using Lumina.Excel.Sheets;
 
@@ -26,7 +27,8 @@ public class UniversalisClientV2 : IDisposable {
         httpClient = new HttpClient(new SocketsHttpHandler {
             AutomaticDecompression = DecompressionMethods.All, ConnectCallback = happyEyeballsCallback.ConnectCallback
         });
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"PriceInsight/{Assembly.GetExecutingAssembly().GetName().Version} ({Environment.OSVersion}) Dalamud/{Util.AssemblyVersion}");
+        var dalamudVersion = typeof(IDalamudPluginInterface).Assembly.GetName().Version;
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"PriceInsight/{Assembly.GetExecutingAssembly().GetName().Version} ({Environment.OSVersion}) Dalamud/{dalamudVersion}");
     }
 
     public async Task<Dictionary<uint, MarketBoardData>?> GetMarketBoardDataList(
