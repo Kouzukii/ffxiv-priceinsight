@@ -39,6 +39,8 @@ public class ItemPriceLookup : IDisposable {
     public (MarketBoardData? MarketBoardData, LookupState State) Get(ulong fullItemId, bool refresh) {
         if (!ToMarketableItemId(fullItemId, out var itemId))
             return (null, LookupState.NonMarketable);
+        // Home world is otherwise only set on login/inventory changes, which a mid-session plugin reload misses
+        CheckReady();
 
         if (refresh) {
             cache.Remove(itemId.ToString());

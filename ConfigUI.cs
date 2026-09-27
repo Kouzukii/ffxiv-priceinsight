@@ -144,6 +144,14 @@ internal class ConfigUI(PriceInsightPlugin plugin) : IDisposable {
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show the prices for both NQ and HQ of an item.\nWhen turned off will only display price for the current quality (use Ctrl to switch between NQ and HQ).");
+
+            configValue = conf.ShowConvertedItemPrices;
+            if (ImGui.Checkbox("Show prices for items after conversion", ref configValue)) {
+                conf.ShowConvertedItemPrices = configValue;
+                conf.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("For items that can't be sold as-is but can be exchanged for a sellable item\n(e.g. Diadem Skybuilders' materials after inspection), show the market price of the item they become.");
         }
 
         ImGui.End();

@@ -14,6 +14,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
     public Hooks Hooks { get; }
     public ItemPriceLookup ItemPriceLookup { get; private set; }
     public UniversalisClientV2 UniversalisClientV2 { get; }
+    public ItemConversions ItemConversions { get; } = new();
 
     private readonly ConfigUI configUi;
 
@@ -89,8 +90,12 @@ public class PriceInsightPlugin : IDalamudPlugin {
                     for (var i = 0; i < container->Size; i++) {
                         var item = &container->Items[i];
                         var itemId = item->ItemId;
-                        if (itemId != 0)
-                            items.Add(itemId);
+                        if (itemId == 0)
+                            continue;
+                        // Prefetch the sellable item for convertible ones too
+                        if (Configuration.ShowConvertedItemPrices && ItemConversions.TryGet(itemId, out var conversion))
+                            itemId = conversion.TargetItemId;
+                        items.Add(itemId);
                     }
                 }
             }
