@@ -40,6 +40,8 @@ public class Configuration : IPluginConfiguration {
 
     public bool ShowBothNqAndHq { get; set; } = true;
 
+    public bool ShowConvertedItemPrices { get; set; } = false;
+
     [JsonExtensionData]
     public Dictionary<string, object> AdditionalData { get; set; } = new();
 

@@ -15,6 +15,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
     private const int NodeId = 32612;
     private const char HQIcon = '';
     private const char GilIcon = '';
+    private const ushort ConversionColor = 31; // gold, distinct from the 506 price highlight
 
     public int? LastItemQuantity;
 
@@ -41,9 +42,17 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
 
     public unsafe void OnItemTooltip(AtkUnitBase* itemTooltip) {
         var refresh = plugin.Configuration.RefreshWithAlt && Service.KeyState[VirtualKey.MENU];
-        var (marketBoardData, lookupState) = plugin.ItemPriceLookup.Get(Service.GameGui.HoveredItem, refresh);
-        var payloads = ParseMbData(Service.GameGui.HoveredItem >= 500000, marketBoardData, lookupState);
+        var (itemId, conversion) = ResolveHovered(Service.GameGui.HoveredItem);
+        var (marketBoardData, lookupState) = plugin.ItemPriceLookup.Get(itemId, refresh);
+        var payloads = ParseMbData(itemId >= 500000, marketBoardData, lookupState, conversion);
         UpdateItemTooltip(itemTooltip, payloads);
+    }
+
+    // Swaps an unsellable hovered item for the item it converts into, if enabled
+    private (ulong ItemId, ItemConversion? Conversion) ResolveHovered(ulong hoveredItem) {
+        if (plugin.Configuration.ShowConvertedItemPrices && hoveredItem < 500000 && plugin.ItemConversions.TryGet((uint)hoveredItem, out var conversion))
+            return (conversion.TargetItemId, conversion);
+        return (hoveredItem, null);
     }
 
     private unsafe void UpdateItemTooltip(AtkUnitBase* itemTooltip, List<Payload> payloads) {
@@ -106,10 +115,21 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         insertNode->SetYFloat(insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
-    private List<Payload> ParseMbData(bool hq, MarketBoardData? mbData, LookupState lookupState) {
+    private List<Payload> ParseMbData(bool hq, MarketBoardData? mbData, LookupState lookupState, ItemConversion? conversion) {
         var payloads = new List<Payload>();
         if (lookupState == LookupState.NonMarketable)
             return payloads;
+
+        // Marks prices as belonging to the converted item; only the first header gets it
+        var conversionTagged = false;
+        void ConversionTag() {
+            if (conversion == null || conversionTagged) return;
+            payloads.Add(new UIForegroundPayload(ConversionColor));
+            payloads.Add(new TextPayload($" (after {conversion.Process})"));
+            payloads.Add(new UIForegroundPayload(0));
+            conversionTagged = true;
+        }
+
         if (lookupState == LookupState.Faulted) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.Warning));
@@ -129,7 +149,9 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             var priceHeader = false;
             void PriceHeader() {
                 if (priceHeader) return;
-                payloads.Add(new TextPayload("Marketboard Price:"));
+                payloads.Add(new TextPayload("Marketboard Price"));
+                ConversionTag();
+                payloads.Add(new TextPayload(":"));
                 priceHeader = true;
             }
 
@@ -224,7 +246,9 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 if (recentHeader) return;
                 if (payloads.Count > 0)
                     payloads.Add(new TextPayload("\n"));
-                payloads.Add(new TextPayload("Most Recent Purchase:"));
+                payloads.Add(new TextPayload("Most Recent Purchase"));
+                ConversionTag();
+                payloads.Add(new TextPayload(":"));
                 recentHeader = true;
             }
 
@@ -311,13 +335,23 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             }
         }
 
+        // No header to tag (e.g. only sales per day shown, or still loading), so give it its own line
+        if (conversion != null && !conversionTagged && payloads.Count > 0) {
+            payloads.InsertRange(0, [
+                new UIForegroundPayload(ConversionColor),
+                new TextPayload($"After {conversion.Process}:\n"),
+                new UIForegroundPayload(0),
+            ]);
+        }
+
         return payloads;
     }
 
     public void Refresh(IDictionary<uint, MarketBoardData> mbData) {
         if (Service.GameGui.HoveredItem >= 2000000) return;
-        if (mbData.TryGetValue((uint)(Service.GameGui.HoveredItem % 500000), out var data)) {
-            var newText = ParseMbData(Service.GameGui.HoveredItem >= 500000, data, LookupState.Marketable);
+        var (itemId, conversion) = ResolveHovered(Service.GameGui.HoveredItem);
+        if (mbData.TryGetValue((uint)(itemId % 500000), out var data)) {
+            var newText = ParseMbData(itemId >= 500000, data, LookupState.Marketable, conversion);
             Service.Framework.RunOnFrameworkThread(() => {
                 try {
                     var tooltip = Service.GameGui.GetAddonByName("ItemDetail");
@@ -335,8 +369,9 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
     }
 
     public void FetchFailed(ICollection<uint> items) {
-        if (!items.Contains((uint)Service.GameGui.HoveredItem % 500000)) return;
-        var newText = ParseMbData(false, null, LookupState.Faulted);
+        var (itemId, conversion) = ResolveHovered(Service.GameGui.HoveredItem);
+        if (!items.Contains((uint)itemId % 500000)) return;
+        var newText = ParseMbData(false, null, LookupState.Faulted, conversion);
         Service.Framework.RunOnFrameworkThread(() => {
             try {
                 var tooltip = Service.GameGui.GetAddonByName("ItemDetail");
