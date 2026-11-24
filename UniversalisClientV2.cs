@@ -15,8 +15,19 @@ namespace PriceInsight;
 
 public class UniversalisClientV2 : IDisposable {
     private static readonly Dictionary<uint, string> Regions = new() { { 1, "Japan" }, { 2, "North-America" }, { 3, "Europe" }, { 4, "Oceania" } };
-    internal static readonly Dictionary<uint, (string Name, string DcName, string Region)> WorldLookup = Service.DataManager.GetExcelSheet<World>()
-        .ToDictionary(w => w.RowId, w => (w.Name.ExtractText(), w.DataCenter.Value.Name.ExtractText(), Regions.GetValueOrDefault(w.DataCenter.Value.Region.RowId) ?? "unknown"));
+    internal static readonly Dictionary<uint, (string Name, string DcName, string Region)> WorldLookup = BuildWorldLookup();
+
+    private static Dictionary<uint, (string Name, string DcName, string Region)> BuildWorldLookup() {
+        var dcSheet = Service.DataManager.GetExcelSheet<WorldDCGroupType>();
+        return Service.DataManager.GetExcelSheet<World>().ToDictionary(w => w.RowId, w => {
+            // Lumina's World.DataCenter currently reads a column holding the first datacenter of the world's region
+            // (every NA world reports Aether, every EU world Chaos, ...), which made every region listing look like it
+            // came from the player's own datacenter. The world's actual datacenter is in the next column, exposed as Unknown0.
+            // When Lumina fixes the World sheet definition, Unknown0 will be renamed and this should go back to w.DataCenter.
+            var dc = dcSheet.GetRowOrDefault(w.Unknown0) ?? w.DataCenter.Value;
+            return (w.Name.ExtractText(), dc.Name.ExtractText(), Regions.GetValueOrDefault(dc.Region.RowId) ?? "unknown");
+        });
+    }
 
     private readonly HappyEyeballsCallback happyEyeballsCallback;
     private readonly HttpClient httpClient;
@@ -96,9 +107,10 @@ file class Result {
                     Nq = this.nq?.minListing?.dc?.ToListing(worldUploadTime, worldUploadTimes),
                     Hq = this.hq?.minListing?.dc?.ToListing(worldUploadTime, worldUploadTimes),
                 },
+                // If the region-wide entry was skipped (unknown world), fall back to the datacenter entry so the tooltip still has a price.
                 Region = new() {
-                    Nq = this.nq?.minListing?.region?.ToListing(worldUploadTime, worldUploadTimes),
-                    Hq = this.hq?.minListing?.region?.ToListing(worldUploadTime, worldUploadTimes),
+                    Nq = this.nq?.minListing?.region?.ToListing(worldUploadTime, worldUploadTimes) ?? this.nq?.minListing?.dc?.ToListing(worldUploadTime, worldUploadTimes),
+                    Hq = this.hq?.minListing?.region?.ToListing(worldUploadTime, worldUploadTimes) ?? this.hq?.minListing?.dc?.ToListing(worldUploadTime, worldUploadTimes),
                 }
             },
             MostRecentPurchase = new() {
@@ -111,8 +123,8 @@ file class Result {
                     Hq = this.hq?.recentPurchase?.dc,
                 },
                 Region = new() {
-                    Nq = this.nq?.recentPurchase?.region,
-                    Hq = this.hq?.recentPurchase?.region,
+                    Nq = (Listing?)this.nq?.recentPurchase?.region ?? this.nq?.recentPurchase?.dc,
+                    Hq = (Listing?)this.hq?.recentPurchase?.region ?? this.hq?.recentPurchase?.dc,
                 }
             },
             AverageSalePrice = new() {
@@ -172,7 +184,11 @@ file class Entry {
             return null;
         string? world = null, datacenter = null;
         if (e.worldId != null) {
-            (world, datacenter, _) = UniversalisClientV2.WorldLookup[e.worldId.Value];
+            // Universalis occasionally returns listings on world ids the game doesn't know (e.g. 28599). Skip those
+            // instead of throwing, which would fail the whole batch of up to 50 items.
+            if (!UniversalisClientV2.WorldLookup.TryGetValue(e.worldId.Value, out var w))
+                return null;
+            (world, datacenter, _) = w;
         }
 
         return new Listing { Price = e.price.Value, Time = e.timestamp, World = world, Datacenter = datacenter };
